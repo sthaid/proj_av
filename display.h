@@ -1,111 +1,91 @@
 #ifndef __DISPLAY__
 #define __DISPLAY__
 
+#include <string>
+
 class display {
 public:
-    typedef struct {
-        int32_t event;
-        union {
-            struct {
-                int32_t x;
-                int32_t y;
-            } mouse_click;
-            struct {
-                int32_t delta_x;
-                int32_t delta_y;;
-            } mouse_motion;
-            struct {
-                int32_t delta_x;
-                int32_t delta_y;;
-            } mouse_wheel;
-        };
-    } event_t;
+    static const int EID_NONE = -1;
+    static const int KEY_HOME = 128;
+    static const int KEY_END  = 129;
+    static const int KEY_PGUP = 130;
+    static const int KEY_PGDN = 131;
+
+    enum color { RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, BLACK, WHITE, GRAY, PINK, LIGHT_BLUE };
+    enum event_type { ET_NONE=-1, ET_QUIT, 
+                      ET_WIN_SIZE_CHANGE, ET_WIN_MINIMIZED, ET_WIN_RESTORED, 
+                      ET_MOUSE_CLICK, ET_MOUSE_MOTION, ET_MOUSE_WHEEL, 
+                      ET_KEYBOARD };
+
+    struct event {
+        int eid;
+        int val1;  // delta_x, or key
+        int val2;  // deltay_y
+    };
 
     display(int w, int h);
     ~display();
+    int get_win_width() { return win_width; }
+    int get_win_height() { return win_height; }
+    bool get_win_minimized() { return win_minimized; }
+    int get_pane_rows(int pid=0, int fid=0) { return pane[pid].h / font[fid].char_height; }
+    int get_pane_cols(int pid=0, int fid=0) { return pane[pid].w / font[fid].char_width; }
 
-    event_t poll_event();
+    void start();
+    void start(int x1, int y1, int w1, int h1);
+    void start(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
+    void finish();
 
-    // events  XXX review the keybd events, maybe not needed hre
-    // - no event
-    static const int SDL_EVENT_NONE            = 0;
-    // - ascii events 
-    static const int SDL_EVENT_KEY_BS          = 8;
-    static const int SDL_EVENT_KEY_TAB         = 9;
-    static const int SDL_EVENT_KEY_ENTER       = 13;
-    static const int SDL_EVENT_KEY_ESC         = 27;
-    // - special keys
-    static const int SDL_EVENT_KEY_HOME        = 130;
-    static const int SDL_EVENT_KEY_END         = 131;
-    static const int SDL_EVENT_KEY_PGUP        = 132;
-    static const int SDL_EVENT_KEY_PGDN        = 133;
-    // - window
-    static const int SDL_EVENT_WIN_SIZE_CHANGE = 140;
-    static const int SDL_EVENT_WIN_MINIMIZED   = 141;
-    static const int SDL_EVENT_WIN_RESTORED    = 142;
-    // - quit
-    static const int SDL_EVENT_QUIT            = 150;
-    // - available to be defined by users
-    static const int SDL_EVENT_USER_START      = 160;
-    static const int SDL_EVENT_USER_END        = 999;
+    void set_color(enum color);
+    void draw_point(int x, int y, int pid=0);   // xxx multi
+    void draw_line(int x1, int y1, int x2, int y2, int pid=0);   // xxx multi
+    void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
+    void draw_filled_rect(int x, int y, int w, int h, int pid=0);
+    void draw_circle(int x, int y, int r, int pid=0);
+    void draw_filled_circle(int x, int y, int r, int pid=0);
+    int draw_text(std::string &str, int row, int col, int pid=0, bool evreg=false, 
+                  int fid=0, bool center=false, int field_cols=999);
 
-    // event types
-    static const int SDL_EVENT_TYPE_NONE         = 0;
-    static const int SDL_EVENT_TYPE_TEXT         = 1;  // XXX maybe don't need this
-    static const int SDL_EVENT_TYPE_MOUSE_CLICK  = 2;
-    static const int SDL_EVENT_TYPE_MOUSE_MOTION = 3;
-    static const int SDL_EVENT_TYPE_MOUSE_WHEEL  = 4;
-
-#if 0
-    clear
-    present
-    text
-    rect
-    line
-
-    create_texture
-    copy_texture
-#endif
-
+    int event_register(enum event_type et, int pid=0, int x=0, int y=0, int w=0, int h=0);
+    struct event poll_event();
 private:
-    static const int MAX_SDL_FONT  = 2;
-    static const int MAX_SDL_EVENT = 1000;
-
     // window state
-    struct SDL_Window * sdl_window;  // XXX rm sdl_
-    struct SDL_Renderer * sdl_renderer;
-    int32_t sdl_win_width;
-    int32_t sdl_win_height;
-    bool    sdl_win_minimized;
+    struct SDL_Window * window; 
+    struct SDL_Renderer * renderer;
+    int win_width;
+    int win_height;
+    bool  win_minimized;
 
-    // program quit requested
-    bool sdl_quit;
+    // pane locations
+    int max_pane;
+    struct pane {
+        int x, y;
+        int w, h;
+    } pane[4];
 
-    // XXX
-    struct Mix_Chunk * sdl_button_sound;
-
+    // fonts
     struct {
         struct _TTF_Font * font;
-        int32_t    char_width;
-        int32_t    char_height;
-    } sdl_font[MAX_SDL_FONT];
+        int char_width;
+        int char_height;
+    } font[2];
 
-    int32_t mouse_button_state;
-    int32_t mouse_button_motion_event;
-    int32_t mouse_button_x;
-    int32_t mouse_button_y;
-
+    // events
+    static const int MAX_EID = 100;
     struct {
-        // XXX SDL_Rect pos;
-        int32_t x;
-        int32_t y;
-        int32_t w;
-        int32_t h;
-        int32_t type;
-    } sdl_event_reg_tbl[MAX_SDL_EVENT];
-    int32_t sdl_event_max;
+        enum event_type et;
+        int x, y, w, h;
+    } eid_tbl[MAX_EID];
+    int max_eid;
+    int mouse_button_state;
+    int mouse_button_motion_eid;
+    int mouse_button_x;
+    int mouse_button_y;
+    struct Mix_Chunk * event_sound;
+    void play_event_sound(void);
 
-    void sdl_play_event_sound(void);
+    // print screen
+    void print_screen(void);
 };
 
 #endif

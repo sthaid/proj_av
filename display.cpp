@@ -96,6 +96,50 @@ display::display(int w, int h)
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
+
+#if 0
+// xxxxxxxxxxxxxxxxxxxxxx test
+    // init pixels
+    start();
+
+    char * pixels = new char[1000000];
+    memset(pixels,0,1000000);
+    memset(pixels+500000, 4, 10000);
+
+    // creae surface from pixels
+    SDL_Surface * surface;
+    surface = SDL_CreateRGBSurfaceFrom(pixels, 
+                                       1000, 1000, 8, 1000, // width, height, depth, pitch
+                                        0, 0, 0, 0);         // RGBA masks, not used
+    cout << "surface " << surface << endl;
+
+    // set surface palette
+    SDL_Palette palette;
+    SDL_Color colors[256] = { { 255,0,0,        255 },
+                            { 0,255,0,        255 },
+                            { 0,0,255,        255 },
+                            { 255,255,255,    255 },
+                            { 0,0,0,          255 },
+                                    };
+    palette.ncolors = 256;
+    palette.colors = colors;
+    ret = SDL_SetSurfacePalette(surface, &palette);
+    cout << "set palette " << ret << " " << SDL_GetError() << endl;
+
+    // create texture from surface
+    SDL_Texture * texture;
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    cout << "texture " << texture << endl;
+
+    //render copy
+    ret = SDL_RenderCopy(renderer, texture, 
+                         NULL,    // srcrect
+                         NULL);   // dstrect
+    cout << "render copy " << ret << endl;
+
+    finish();
+// xxxxxxxxxxxxxxxxxxxxxx end test
+#endif
 }
 
 display::~display()
@@ -291,7 +335,7 @@ void display::draw_filled_circle(int x, int y, int r, int pid)
     // XXX
 }
 
-int display::draw_text(std::string &str, int row, int col, int pid, bool evreg,
+int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
                         int fid, bool center, int field_cols)
 {
     SDL_Surface    * surface = NULL;
@@ -322,7 +366,7 @@ int display::draw_text(std::string &str, int row, int col, int pid, bool evreg,
         col < 0 || col >= get_pane_cols(pid,fid) ||
         field_cols <= 0) 
     {
-        return EID_NONE;;
+        return EID_NONE;
     }
 
     // reduce field_cols if necessary to stay in pane
@@ -380,18 +424,77 @@ int display::draw_text(std::string &str, int row, int col, int pid, bool evreg,
     return eid;
 }
 
+struct display::image * display::create_image(unsigned char * pixels, int w, int h)
+{
+    // creae surface from pixels
+    SDL_Surface * surface;
+    surface = SDL_CreateRGBSurfaceFrom(pixels, 
+                                       1000, 1000, 8, 1000, // width, height, depth, pitch
+                                        0, 0, 0, 0);         // RGBA masks, not used
+    cout << "surface " << surface << endl;
+
+    // set surface palette
+    SDL_Palette palette;  // XXX needs work
+    SDL_Color colors[256] = { { 255,0,0,        255 },
+                            { 0,255,0,        255 },
+                            { 0,0,255,        255 },
+                            { 255,255,255,    255 },
+                            { 0,0,0,          255 },
+                                    };
+    palette.ncolors = 256;
+    palette.colors = colors;
+    int ret = SDL_SetSurfacePalette(surface, &palette);
+    cout << "set palette " << ret << " " << SDL_GetError() << endl;
+
+    // create texture from surface
+    SDL_Texture * texture;
+    texture = SDL_CreateTextureFromSurface(renderer, surface);
+    cout << "texture " << texture << endl;
+
+    // return the texture
+    return reinterpret_cast<struct image *>(texture);
+}
+
+void display::destroy_image(struct image * img)
+{
+    SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(img));
+}
+
+void display::draw_image(struct image * img, int pid)
+{
+    draw_image(img, 0, 0, pane[pid].w, pane[pid].h, pid);
+}
+
+void display::draw_image(struct image * img, int x, int y, int w, int h, int pid)
+{
+    int ret;
+    SDL_Rect dstrect;
+
+    //render copy
+    dstrect.x = x + pane[pid].x;
+    dstrect.y = y + pane[pid].y;
+    dstrect.w = w;
+    dstrect.h = h;
+    ret = SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(img), NULL, &dstrect);
+    // XXX assert on the ret
+    // XXX cout << "render copy " << ret << endl;
+}
+
 // -----------------  EVENT HANDLING  --------------------------------------------------
 
 int display::event_register(enum event_type et, int pid, int x, int y, int w, int h)
 {
     assert(pid >= 0 && pid < max_pane);
     assert(max_eid < MAX_EID);
+
+#if 0
     assert(x >= 0);
     assert(y >= 0);
     assert(w > 0);
     assert(h > 0);
     assert(x + w <= pane[pid].w);  // XXX maybe reduce instead
     assert(y + h <= pane[pid].h);
+#endif
 
     eid_tbl[max_eid].et =  et;
     eid_tbl[max_eid].x  = x + pane[pid].x;

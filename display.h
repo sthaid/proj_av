@@ -23,6 +23,8 @@ public:
         int val2;  // deltay_y
     };
 
+    struct image;
+
     display(int w, int h);
     ~display();
     int get_win_width() { return win_width; }
@@ -43,8 +45,12 @@ public:
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
     void draw_circle(int x, int y, int r, int pid=0);
     void draw_filled_circle(int x, int y, int r, int pid=0);
-    int draw_text(std::string &str, int row, int col, int pid=0, bool evreg=false, 
+    int draw_text(std::string str, int row, int col, int pid=0, bool evreg=false, 
                   int fid=0, bool center=false, int field_cols=999);
+    struct image * create_image(unsigned char * pixels, int w, int h);
+    void destroy_image(struct image * img);
+    void draw_image(struct image * img, int pid=0);
+    void draw_image(struct image * img, int x, int y, int w, int h, int pid=0);
 
     int event_register(enum event_type et, int pid=0, int x=0, int y=0, int w=0, int h=0);
     struct event poll_event();

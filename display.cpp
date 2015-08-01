@@ -14,6 +14,20 @@ extern "C" {
 #include <png.h>
 }
 
+static const SDL_Color colors[256] = {
+    { 255,   0,   0, 255 },    // RED         
+    { 255, 128,   0, 255 },    // ORANGE
+    { 255, 255,   0, 255 },    // YELLOW
+    { 0,   255,   0, 255 },    // GREEN
+    { 0,     0, 255, 255 },    // BLUE
+    { 127,   0, 255, 255 },    // PURPLE
+    { 0,     0,   0, 255 },    // BLACK
+    { 255, 255, 255, 255 },    // WHITE       
+    { 224, 224, 224, 255 },    // GRAY        
+    { 255, 105, 180, 255 },    // PINK 
+    { 0,   255, 255, 255 },    // LIGHT_BLUE
+        };
+
 // -----------------  CONSTRUCTOR & DESTRUCTOR  ----------------------------------------
 
 display::display(int w, int h)
@@ -93,53 +107,10 @@ display::display(int w, int h)
          " height=" << font[1].char_height << 
          endl);
 
+    // clear screen
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
-
-#if 0
-// xxxxxxxxxxxxxxxxxxxxxx test
-    // init pixels
-    start();
-
-    char * pixels = new char[1000000];
-    memset(pixels,0,1000000);
-    memset(pixels+500000, 4, 10000);
-
-    // creae surface from pixels
-    SDL_Surface * surface;
-    surface = SDL_CreateRGBSurfaceFrom(pixels, 
-                                       1000, 1000, 8, 1000, // width, height, depth, pitch
-                                        0, 0, 0, 0);         // RGBA masks, not used
-    cout << "surface " << surface << endl;
-
-    // set surface palette
-    SDL_Palette palette;
-    SDL_Color colors[256] = { { 255,0,0,        255 },
-                            { 0,255,0,        255 },
-                            { 0,0,255,        255 },
-                            { 255,255,255,    255 },
-                            { 0,0,0,          255 },
-                                    };
-    palette.ncolors = 256;
-    palette.colors = colors;
-    ret = SDL_SetSurfacePalette(surface, &palette);
-    cout << "set palette " << ret << " " << SDL_GetError() << endl;
-
-    // create texture from surface
-    SDL_Texture * texture;
-    texture = SDL_CreateTextureFromSurface(renderer, surface);
-    cout << "texture " << texture << endl;
-
-    //render copy
-    ret = SDL_RenderCopy(renderer, texture, 
-                         NULL,    // srcrect
-                         NULL);   // dstrect
-    cout << "render copy " << ret << endl;
-
-    finish();
-// xxxxxxxxxxxxxxxxxxxxxx end test
-#endif
 }
 
 display::~display()
@@ -160,29 +131,29 @@ display::~display()
 
 // -----------------  DISPLAY START AND FINISH  ----------------------------------------
 
-void display::start()
+void display::start(int x0, int y0, int w0, int h0)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
 
-    pane[0].x = 0;
-    pane[0].y = 0;
-    pane[0].w = win_width;
-    pane[0].h = win_height;
+    pane[0].x = x0;
+    pane[0].y = y0;
+    pane[0].w = w0;
+    pane[0].h = h0;
 
     max_pane = 1;
     max_eid = 0;
 }
 
-void display::start(int x1, int y1, int w1, int h1)
+void display::start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1)
 {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
 
-    pane[0].x = 0;
-    pane[0].y = 0;
-    pane[0].w = win_width;
-    pane[0].h = win_height;
+    pane[0].x = x0;
+    pane[0].y = y0;
+    pane[0].w = w0;
+    pane[0].h = h0;
 
     pane[1].x = x1;
     pane[1].y = y1;
@@ -190,30 +161,6 @@ void display::start(int x1, int y1, int w1, int h1)
     pane[1].h = h1;
 
     max_pane = 2;
-    max_eid = 0;
-}
-
-void display::start(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2)
-{
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-    SDL_RenderClear(renderer);
-
-    pane[0].x = 0;
-    pane[0].y = 0;
-    pane[0].w = win_width;
-    pane[0].h = win_height;
-
-    pane[1].x = x1;
-    pane[1].y = y1;
-    pane[1].w = w1;
-    pane[1].h = h1;
-
-    pane[2].x = x2;
-    pane[2].y = y2;
-    pane[2].w = w2;
-    pane[2].h = h2;
-
-    max_pane = 3;
     max_eid = 0;
 }
 
@@ -327,12 +274,12 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
 
 void display::draw_circle(int x, int y, int r, int pid)
 {
-    // XXX
+    // xxx
 }
 
 void display::draw_filled_circle(int x, int y, int r, int pid)
 {
-    // XXX
+    // xxx
 }
 
 int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
@@ -424,26 +371,26 @@ int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
     return eid;
 }
 
-struct display::image * display::create_image(unsigned char * pixels, int w, int h)
+struct display::texture * display::create_texture(unsigned char * pixels, int w, int h)
 {
     // creae surface from pixels
     SDL_Surface * surface;
     surface = SDL_CreateRGBSurfaceFrom(pixels, 
-                                       1000, 1000, 8, 1000, // width, height, depth, pitch
-                                        0, 0, 0, 0);         // RGBA masks, not used
+                                       w, h, 8, w,   // width, height, depth, pitch
+                                       0, 0, 0, 0);  // RGBA masks, not used
     cout << "surface " << surface << endl;
 
     // set surface palette
-    SDL_Palette palette;  // XXX needs work
-    SDL_Color colors[256] = { { 255,0,0,        255 },
-                            { 0,255,0,        255 },
-                            { 0,0,255,        255 },
-                            { 255,255,255,    255 },
-                            { 0,0,0,          255 },
-                                    };
+#if 1  // XXX 256 ?
+    SDL_Palette * palette = SDL_AllocPalette(256);
+    SDL_SetPaletteColors(palette, colors, 0, 256);
+    int ret = SDL_SetSurfacePalette(surface, palette);
+#else
+    SDL_Palette palette; 
     palette.ncolors = 256;
     palette.colors = colors;
     int ret = SDL_SetSurfacePalette(surface, &palette);
+#endif
     cout << "set palette " << ret << " " << SDL_GetError() << endl;
 
     // create texture from surface
@@ -451,36 +398,112 @@ struct display::image * display::create_image(unsigned char * pixels, int w, int
     texture = SDL_CreateTextureFromSurface(renderer, surface);
     cout << "texture " << texture << endl;
 
+    // free the surface
+    SDL_FreeSurface(surface); 
+
     // return the texture
-    return reinterpret_cast<struct image *>(texture);
+    return reinterpret_cast<struct texture *>(texture);
 }
 
-void display::destroy_image(struct image * img)
+void display::destroy_texture(struct texture * t)
 {
-    SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(img));
+    SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(t));
 }
 
-void display::draw_image(struct image * img, int pid)
+void display::draw_texture(struct texture * t, int x, int y, int w, int h, int pid)
 {
-    draw_image(img, 0, 0, pane[pid].w, pane[pid].h, pid);
-}
+#if 0
+    SDL_Rect dstrect, srcrect;
 
-void display::draw_image(struct image * img, int x, int y, int w, int h, int pid)
-{
-    int ret;
-    SDL_Rect dstrect;
+    srcrect.x = x;
+    srcrect.y = y;
+    srcrect.w = w;
+    srcrect.h = h;
 
-    //render copy
-    dstrect.x = x + pane[pid].x;
-    dstrect.y = y + pane[pid].y;
-    dstrect.w = w;
-    dstrect.h = h;
-    ret = SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(img), NULL, &dstrect);
-    // XXX assert on the ret
-    // XXX cout << "render copy " << ret << endl;
+    dstrect.x = pane[pid].x;
+    dstrect.y = pane[pid].y;
+    dstrect.w = pane[pid].w;
+    dstrect.h = pane[pid].h;
+
+    SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
+#else
+    SDL_Rect dstrect, srcrect;
+    int tw, th;
+    double f1, f2;
+
+    SDL_QueryTexture(reinterpret_cast<SDL_Texture*>(t), NULL, NULL, &tw, &th);
+
+    cout << "SRC " << x << " " << y << " " << w <<" " << h << endl;
+    cout << "SRC TEXT w,h " << tw << " " << th << endl;
+
+    if (x >= 0 && x+w <= tw) {
+        cout << "OKAY" << endl;
+        // okay
+        f1 = 0;
+        f2 = 1;
+    } else if (x >= 0 && x < tw) {
+        // off to the right
+        f1 = 0;
+        f2 = (double)(tw - x) / w;
+    } else if (x < 0 && x + w <= tw) {
+        // off to the left
+        f1 = (double)(-x) / w;
+        f2 = 1;
+    } else if (x < 0 && x + w >= tw) {
+        f1 = (double)(-x) / w;
+        f2 = (double)(tw - x) / w;
+    } else {
+        f1 = 0;
+        f2 = 1;
+    }
+    dstrect.x = f1 * pane[pid].w;
+    dstrect.w = f2 * pane[pid].w - dstrect.x;
+    dstrect.x += pane[pid].x;
+
+    if (y >= 0 && y+h <= th) {
+        cout << "OKAY" << endl;
+        // okay
+        f1 = 0;
+        f2 = 1;
+    } else if (y >= 0 && y < th) {
+        // off the botton
+        f1 = 0;
+        f2 = (double)(th - y) / h;
+    } else if (y < 0 && y + h <= th) {
+        // off the top
+        f1 = (double)(-y) / h;
+        f2 = 1;
+    } else if (y < 0 && y + h >= th) {
+        f1 = (double)(-y) / h;
+        f2 = (double)(th - y) / h;
+    } else {
+        f1 = 0;
+        f2 = 1;
+    }
+    dstrect.y = f1 * pane[pid].h;
+    dstrect.h = f2 * pane[pid].h - dstrect.y;
+    dstrect.y += pane[pid].y;
+
+
+
+    //dstrect.y = pane[pid].y;
+    //dstrect.h = pane[pid].h;
+
+    srcrect.x = x;
+    srcrect.y = y;
+    srcrect.w = w;
+    srcrect.h = h;
+
+    SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
+#endif
 }
 
 // -----------------  EVENT HANDLING  --------------------------------------------------
+
+int display::event_register(enum event_type et, int pid)
+{
+    return event_register(et, pid, pane[pid].x, pane[pid].y, pane[pid].w, pane[pid].h);
+}
 
 int display::event_register(enum event_type et, int pid, int x, int y, int w, int h)
 {
@@ -492,7 +515,7 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
     assert(y >= 0);
     assert(w > 0);
     assert(h > 0);
-    assert(x + w <= pane[pid].w);  // XXX maybe reduce instead
+    assert(x + w <= pane[pid].w);  // xxx maybe reduce instead
     assert(y + h <= pane[pid].h);
 #endif
 
@@ -657,7 +680,7 @@ struct display::event display::poll_event()
             }
 
             // get all additional pending mouse motion events, and sum the motion
-            // XXX what if pos left the pane
+            // xxx what if pos left the pane
             event.eid = mouse_button_motion_eid;
             event.val1 = 0;  // delta_x
             event.val2 = 0;  // delta_y
@@ -715,7 +738,7 @@ struct display::event display::poll_event()
             }
 
             // determine value to return with the event
-            // XXX handle shift 
+            // xxx handle shift 
             if (key < 128) {
                 val1 = key;
             } else if (key == SDLK_HOME) {

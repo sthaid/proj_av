@@ -1,9 +1,9 @@
-TARGETS = av
+TARGETS = create
+H_FILES = display.h event_sound.h logging.h util.h
+CREATE_OBJS = create.o display.o utils.o
 
 CC = g++
 CPPFLAGS = -std=gnu++11 -Wall -g -O0 $(shell sdl2-config --cflags) 
-
-OBJS = main.o display.o
 
 #
 # build rules
@@ -11,19 +11,21 @@ OBJS = main.o display.o
 
 all: $(TARGETS)
 
-av: $(OBJS) 
-	$(CC) -pthread -lSDL2 -lSDL2_ttf -lSDL2_mixer -lrt -lm -lpng -o $@ $(OBJS)
+create: $(CREATE_OBJS) 
+	$(CC) -lSDL2 -lSDL2_ttf -lSDL2_mixer -lpng -o $@ $(CREATE_OBJS)
 
 #
 # clean rule
 #
 
 clean:
-	rm -f $(TARGETS) $(OBJS)
+	rm -f $(TARGETS) $(CREATE_OBJS)
 
 #
-# compile rules
+# dependencies
+# XXX automate this
 #
 
-main.o: main.cpp display.h
-display.o: display.cpp display.h
+create.o: create.cpp $(H_FILES)
+display.o: display.cpp $(H_FILES)
+util.o: util.cpp $(H_FILES)

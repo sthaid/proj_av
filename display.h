@@ -23,7 +23,7 @@ public:
         int val2;  // deltay_y
     };
 
-    struct image;
+    struct texture;
 
     display(int w, int h);
     ~display();
@@ -33,9 +33,8 @@ public:
     int get_pane_rows(int pid=0, int fid=0) { return pane[pid].h / font[fid].char_height; }
     int get_pane_cols(int pid=0, int fid=0) { return pane[pid].w / font[fid].char_width; }
 
-    void start();
-    void start(int x1, int y1, int w1, int h1);
-    void start(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2);
+    void start(int x0, int y0, int w0, int h0);
+    void start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1);
     void finish();
 
     void set_color(enum color);
@@ -47,12 +46,13 @@ public:
     void draw_filled_circle(int x, int y, int r, int pid=0);
     int draw_text(std::string str, int row, int col, int pid=0, bool evreg=false, 
                   int fid=0, bool center=false, int field_cols=999);
-    struct image * create_image(unsigned char * pixels, int w, int h);
-    void destroy_image(struct image * img);
-    void draw_image(struct image * img, int pid=0);
-    void draw_image(struct image * img, int x, int y, int w, int h, int pid=0);
 
-    int event_register(enum event_type et, int pid=0, int x=0, int y=0, int w=0, int h=0);
+    struct texture * create_texture(unsigned char * pixels, int w, int h);
+    void destroy_texture(struct texture * t);
+    void draw_texture(struct texture * t, int x, int y, int w, int h, int pid=0);
+
+    int event_register(enum event_type et, int pid=0);
+    int event_register(enum event_type et, int pid, int x, int y, int w, int h);
     struct event poll_event();
 private:
     // window state

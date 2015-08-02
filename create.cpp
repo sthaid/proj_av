@@ -12,23 +12,30 @@ using std::ofstream;
 using std::ios;
 using std::string;
 
-#define WORLD_WIDTH     1024
-#define WORLD_HEIGHT    1024
+#define WORLD_WIDTH     4096
+#define WORLD_HEIGHT    4096
 #define DISPLAY_WIDTH   (512 + 38 + 250)
 #define DISPLAY_HEIGHT  512
 
+const double MAX_ZOOM = 31.99;
+const double MIN_ZOOM = 0.51;
+const double ZOOM_FACTOR = 1.1892071;
+
+unsigned char pixels[WORLD_WIDTH][WORLD_HEIGHT];
+
+// -----------------  MAIN  ------------------------------------------------------------------------
+
 int main(int argc, char **argv)
 {
-    unsigned char pixels[WORLD_WIDTH][WORLD_HEIGHT];
     string        filename = "world.dat";
-    int           zoom = 1;
-    int           center_x = WORLD_WIDTH / 2;
-    int           center_y = WORLD_HEIGHT / 2;
+    double        zoom = 0.5;
+    double        center_x = WORLD_WIDTH / 2;
+    double        center_y = WORLD_HEIGHT / 2;
 
     // init pixels to green
     memset(pixels, display::GREEN, sizeof(pixels));
-    for (int i = 500; i < 510; i++) {
-        for (int j = 500; j < 510; j++) {
+    for (int i = 500; i < 525; i++) {
+        for (int j = 500; j < 525; j++) {
             pixels[i][j] = display::RED;
         }
     }
@@ -37,20 +44,16 @@ int main(int argc, char **argv)
     ifstream ifs;
     ifs.open(filename, ios::in|ios::ate|ios::binary);
     if (ifs.is_open()) {
-        // check size, if incorrect then exit
         if (ifs.tellg() != sizeof(pixels)) {
-            FATAL("file " << filename << " has incorrect size" << endl);
+            FATAL(filename << " has incorrect size" << endl);
         }
-
-        // read pixels
         ifs.seekg(0,ios::beg);
         ifs.read(reinterpret_cast<char*>(pixels), sizeof(pixels));
         if (ifs.gcount() != sizeof(pixels)) {
-            FATAL("file " << filename << " read faild" << endl);
+            FATAL(filename << " read failed" << endl);
         }
-
-        // close file
         ifs.close();
+        INFO(filename << " read" << endl);
     }
     ifs.close();
 
@@ -59,7 +62,8 @@ int main(int argc, char **argv)
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
     // create texture from the pixels
-    struct display::texture * texture = d.create_texture(reinterpret_cast<unsigned char *>(pixels), WORLD_WIDTH, WORLD_HEIGHT);
+    struct display::texture * texture = d.create_texture(reinterpret_cast<unsigned char *>(pixels), 
+                                                         WORLD_WIDTH, WORLD_HEIGHT);
 
     // loop
     while (true) {
@@ -69,8 +73,8 @@ int main(int argc, char **argv)
 
         // draw the world
         int w, h, x, y;
-        w = 2 * WORLD_WIDTH / zoom;
-        h = 2 * WORLD_HEIGHT / zoom;
+        w = WORLD_WIDTH / zoom;
+        h = WORLD_HEIGHT / zoom;
         x = center_x - w/2;
         y = center_y - h/2;
         d.draw_texture(texture, x, y, w, h, 0);
@@ -79,9 +83,8 @@ int main(int argc, char **argv)
         int eid_quit      = d.event_register(display::ET_QUIT);
         int eid_pan       = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_write     = d.draw_text("WRITE",    1, 0, 1, true);      // r,c,pid,event
-        int eid_zoom_in   = d.draw_text("ZOOM_IN",  3, 0, 1, true);
-        int eid_zoom_out  = d.draw_text("ZOOM_OUT", 5, 0, 1, true);
         int eid_draw_road = d.draw_text("DRAW_RD",  7, 0, 1, true);
+        int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
 
         // finish
         d.finish();
@@ -89,29 +92,36 @@ int main(int argc, char **argv)
         // handle events
         struct display::event event = d.poll_event();
         if (event.eid == eid_quit) {
-            INFO("QUIT" << endl);
             break;
         } else if (event.eid == eid_pan) {
-            center_x -= event.val1;
-            center_y -= event.val2;
-            INFO("PAN " << center_x << " " << center_y << endl);
+            center_x -= (double)event.val1 * 16 / zoom;
+            center_y -= (double)event.val2 * 16 / zoom;
         } else if (event.eid == eid_write) {
             INFO("WRITE" << endl);
-            //ofstream ofs;
-            //ofs.open(filename, ios::out|ios::binary);
-            //if (!ofs.is_open()) {
-                // display_mesage
-            //}
-        } else if (event.eid == eid_zoom_in) {
-            if (zoom < 256) {
-                zoom *= 2;
+            ofstream ofs;
+            ofs.open(filename, ios::out|ios::binary|ios::trunc);
+            if (!ofs.is_open()) {
+                ERROR(filename << " create failed" << endl);
+            } else {
+                ofs.write(reinterpret_cast<char*>(pixels), sizeof(pixels));
+                if (ifs.gcount() != sizeof(pixels)) {
+                    ERROR(filename << " write failed" << endl);
+                }
+                ofs.close();
+                INFO(filename << " written" << endl);
             }
-            INFO("ZOOM IN " << zoom << endl);
-        } else if (event.eid == eid_zoom_out) {
-            if (zoom > 1) {
-                zoom /= 2;
+        } else if (event.eid == eid_zoom) {
+            if (event.val2 > 0) {
+                if (zoom > MIN_ZOOM) {
+                    zoom /= ZOOM_FACTOR;
+                }
             }
-            INFO("ZOOM OUT " << zoom << endl);
+            if (event.val2 < 0) {
+                if (zoom < MAX_ZOOM) {
+                    zoom *= ZOOM_FACTOR;
+                }
+            }
+            // xxx INFO("ZOOM IS " << zoom << endl);
         } else if (event.eid == eid_draw_road) {
             // d.update_teture
             // and update the pixels too

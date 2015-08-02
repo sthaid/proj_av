@@ -381,16 +381,9 @@ struct display::texture * display::create_texture(unsigned char * pixels, int w,
     cout << "surface " << surface << endl;
 
     // set surface palette
-#if 1  // XXX 256 ?
     SDL_Palette * palette = SDL_AllocPalette(256);
     SDL_SetPaletteColors(palette, colors, 0, 256);
     int ret = SDL_SetSurfacePalette(surface, palette);
-#else
-    SDL_Palette palette; 
-    palette.ncolors = 256;
-    palette.colors = colors;
-    int ret = SDL_SetSurfacePalette(surface, &palette);
-#endif
     cout << "set palette " << ret << " " << SDL_GetError() << endl;
 
     // create texture from surface
@@ -412,32 +405,13 @@ void display::destroy_texture(struct texture * t)
 
 void display::draw_texture(struct texture * t, int x, int y, int w, int h, int pid)
 {
-#if 0
-    SDL_Rect dstrect, srcrect;
-
-    srcrect.x = x;
-    srcrect.y = y;
-    srcrect.w = w;
-    srcrect.h = h;
-
-    dstrect.x = pane[pid].x;
-    dstrect.y = pane[pid].y;
-    dstrect.w = pane[pid].w;
-    dstrect.h = pane[pid].h;
-
-    SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
-#else
     SDL_Rect dstrect, srcrect;
     int tw, th;
     double f1, f2;
 
     SDL_QueryTexture(reinterpret_cast<SDL_Texture*>(t), NULL, NULL, &tw, &th);
 
-    cout << "SRC " << x << " " << y << " " << w <<" " << h << endl;
-    cout << "SRC TEXT w,h " << tw << " " << th << endl;
-
     if (x >= 0 && x+w <= tw) {
-        cout << "OKAY" << endl;
         // okay
         f1 = 0;
         f2 = 1;
@@ -450,9 +424,11 @@ void display::draw_texture(struct texture * t, int x, int y, int w, int h, int p
         f1 = (double)(-x) / w;
         f2 = 1;
     } else if (x < 0 && x + w >= tw) {
+        // off the left and right
         f1 = (double)(-x) / w;
         f2 = (double)(tw - x) / w;
-    } else {
+    } else { 
+        // won't be displayed
         f1 = 0;
         f2 = 1;
     }
@@ -461,7 +437,6 @@ void display::draw_texture(struct texture * t, int x, int y, int w, int h, int p
     dstrect.x += pane[pid].x;
 
     if (y >= 0 && y+h <= th) {
-        cout << "OKAY" << endl;
         // okay
         f1 = 0;
         f2 = 1;
@@ -474,9 +449,11 @@ void display::draw_texture(struct texture * t, int x, int y, int w, int h, int p
         f1 = (double)(-y) / h;
         f2 = 1;
     } else if (y < 0 && y + h >= th) {
+        // off the top and bottom
         f1 = (double)(-y) / h;
         f2 = (double)(th - y) / h;
-    } else {
+    } else { 
+        // won't be displayed
         f1 = 0;
         f2 = 1;
     }
@@ -484,18 +461,12 @@ void display::draw_texture(struct texture * t, int x, int y, int w, int h, int p
     dstrect.h = f2 * pane[pid].h - dstrect.y;
     dstrect.y += pane[pid].y;
 
-
-
-    //dstrect.y = pane[pid].y;
-    //dstrect.h = pane[pid].h;
-
     srcrect.x = x;
     srcrect.y = y;
     srcrect.w = w;
     srcrect.h = h;
 
     SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
-#endif
 }
 
 // -----------------  EVENT HANDLING  --------------------------------------------------
@@ -709,7 +680,7 @@ struct display::event display::poll_event()
 
             // set return event
             event.eid = eid;
-            event.val1 = sdl_event.wheel.x;  // dela_x
+            event.val1 = sdl_event.wheel.x;  // delta_x
             event.val2 = sdl_event.wheel.y;  // delta_y
             break; }
 

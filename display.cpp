@@ -1,7 +1,4 @@
-#include <iostream>
-#include <cstdint>
 #include <cassert>
-#include <string>
 
 #include "display.h"
 #include "event_sound.h"
@@ -240,7 +237,7 @@ void display::draw_rect(int x, int y, int w, int h, int pid, int line_width)
     assert(pid >= 0 && pid < max_pane);
     struct pane &p = pane[pid];
     SDL_Rect rect;
-    int32_t i;
+    int i;
 
     rect.x = x + p.x;
     rect.y = y + p.y;
@@ -378,18 +375,18 @@ struct display::texture * display::create_texture(unsigned char * pixels, int w,
     surface = SDL_CreateRGBSurfaceFrom(pixels, 
                                        w, h, 8, w,   // width, height, depth, pitch
                                        0, 0, 0, 0);  // RGBA masks, not used
-    cout << "surface " << surface << endl;
+    INFO("surface " << surface << endl);
 
     // set surface palette
     SDL_Palette * palette = SDL_AllocPalette(256);
     SDL_SetPaletteColors(palette, colors, 0, 256);
     int ret = SDL_SetSurfacePalette(surface, palette);
-    cout << "set palette " << ret << " " << SDL_GetError() << endl;
+    INFO("set palette " << ret << " " << SDL_GetError() << endl);
 
     // create texture from surface
     SDL_Texture * texture;
     texture = SDL_CreateTextureFromSurface(renderer, surface);
-    cout << "texture " << texture << endl;
+    INFO("texture " << texture << endl);
 
     // free the surface
     SDL_FreeSurface(surface); 

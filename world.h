@@ -13,20 +13,25 @@ public:
         unsigned char v[WIDTH][HEIGHT];
     };
 
-    world();
-    world(std::string filename);
+    world(display &display, std::string filename="");
     ~world();
 
-    //get_pixels
-    //set_pixels
+    void read(std::string filename);
+    void write(std::string filename);
+    bool read_ok() { return read_ok_flag; }
+    bool write_ok() { return write_ok_flag; }
 
-    int read(std::string filename);
-    int write(std::string filename);
+    void draw(int pid, double center_x, double center_y, double zoom);
 
-    void draw(display &d, int pid, double center_x, double center_y, double zoom);
+    struct grid * get_grid() { return grid; }
+    // XXX set_grid
+
 private:
-    struct grid * grid;
-    display::texture * texture;
+    display &d;
+    struct grid *grid;
+    display::texture *t;
+    bool read_ok_flag;
+    bool write_ok_flag;
 };
 
 #endif

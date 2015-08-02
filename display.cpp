@@ -27,7 +27,7 @@ static const SDL_Color colors[256] = {
 
 // -----------------  CONSTRUCTOR & DESTRUCTOR  ----------------------------------------
 
-display::display(int w, int h)
+display::display(int w, int h, bool resizeable)
 {
     int ret;  
 
@@ -55,7 +55,9 @@ display::display(int w, int h)
     }
 
     // create SDL Window and Renderer
-    ret = SDL_CreateWindowAndRenderer(w, h, SDL_WINDOW_RESIZABLE, &window, &renderer);
+    ret = SDL_CreateWindowAndRenderer(w, h, 
+                                      resizeable ? SDL_WINDOW_RESIZABLE : 0, 
+                                      &window, &renderer);
     if (ret != 0) {
         FATAL("SDL_CreateWindowAndRenderer failed" << endl);
     }
@@ -79,6 +81,7 @@ display::display(int w, int h)
         FATAL("TTF_Init failed" << endl);
     }
 
+    // XXX configure font size
     const char * font0_path = "fonts/FreeMonoBold.ttf";         // normal 
     int      font0_ptsize = win_height / 18 - 1;
     const char * font1_path = "fonts/FreeMonoBold.ttf";         // extra large
@@ -397,6 +400,9 @@ struct display::texture * display::create_texture(unsigned char * pixels, int w,
 
 void display::destroy_texture(struct texture * t)
 {
+    if (t == NULL) {
+        return;
+    }
     SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(t));
 }
 

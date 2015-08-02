@@ -1,7 +1,7 @@
 #include <fstream>
 #include <memory.h>
 
-#include "display.h"
+#include "world.h"
 #include "logging.h"
 #include "utils.h"
 
@@ -9,87 +9,92 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
-void world::world()
+world::world(display &display, std::string filename) : d(display)
 {
     grid = new struct grid;
-    memset(grid->v,0,sizeof(grid->v));
+    t = NULL;
+    read_ok_flag = false;
+    write_ok_flag = false;
 
+    memset(grid->v,display::GREEN,sizeof(grid->v));
 
-    memset(pixels, display::GREEN, sizeof(pixels));
+    // XXX test
     for (int i = 500; i < 525; i++) {
         for (int j = 500; j < 525; j++) {
-            pixels[i][j] = display::RED;
+            grid->v[i][j] = display::BLACK;
         }
     }
 
+    if (filename != "") {
+        read(filename);
+    }
+
+    if (!read_ok_flag) {
+        t = d.create_texture(reinterpret_cast<unsigned char *>(grid->v), WIDTH, HEIGHT);
+    }
+
+    if (t == NULL) {
+        ERROR("create texture failed" << endl);
+    }
 }
 
-void world::~world()
+world::~world()
 {
+    d.destroy_texture(t);
     delete grid;
-    destroy texture;
 }
 
-bool world::read(std::string filename)
+void world::read(std::string filename)
 {
     ifstream ifs;
 
+    read_ok_flag = false;
     ifs.open(filename, ios::in|ios::ate|ios::binary);
-    if (!ifs.is_open() {
+    if (!ifs.is_open()) {
         ERROR(filename << " does not exist" << endl);
-        return false;
+        return;
     }
-        
-    if (ifs.tellg() != sizeof(pixels)) {
+    if (ifs.tellg() != sizeof(struct grid)) {
         ERROR(filename << " has incorrect size" << endl);
-        return false;
+        return;
     }
-
     ifs.seekg(0,ios::beg);
-    ifs.read(reinterpret_cast<char*>(pixels), sizeof(pixels));
-    if (ifs.gcount() != sizeof(pixels)) {
+    ifs.read(reinterpret_cast<char*>(grid), sizeof(struct grid));
+    if (!ifs.good()) {
         ERROR(filename << " read failed" << endl);
-        return false;
+        return;
     }
+    read_ok_flag = true;
 
-    ifs.close();
-
-    texture = d.create_texture(reinterpret_cast<unsigned char *>(grid.v),
-                               WORLD_WIDTH, WORLD_HEIGHT);
-
-    INFO(filename << " read successful" << endl);
-    return true;
+    d.destroy_texture(t);
+    t = d.create_texture(reinterpret_cast<unsigned char *>(grid->v), WIDTH, HEIGHT);
 }
 
-bool world::write(std::string filename)
+void world::write(std::string filename)
 {
     ofstream ofs;
 
+    write_ok_flag = false;
     ofs.open(filename, ios::out|ios::binary|ios::trunc);
     if (!ofs.is_open()) {
         ERROR(filename << " create failed" << endl);
-        return false;
+        return;
     }
-
-    ofs.write(reinterpret_cast<char*>(pixels), sizeof(pixels));
-    if (ifs.gcount() != sizeof(pixels)) {
+    ofs.write(reinterpret_cast<char*>(grid), sizeof(struct grid));
+    if (!ofs.good()) {
         ERROR(filename << " write failed" << endl);
-        return false;
+        return;
     }
-
-    ofs.close();
-
-    INFO(filename << " write successful" << endl);
-    return true;
+    write_ok_flag = true;
 }
 
-void world::draw(display &d, double center_x, double center_y, double zoom)
+void world::draw(int pid, double center_x, double center_y, double zoom)
 {
     int w, h, x, y;
 
-    w = WORLD_WIDTH / zoom;
-    h = WORLD_HEIGHT / zoom;
+    w = WIDTH / zoom;
+    h = HEIGHT / zoom;
     x = center_x - w/2;
     y = center_y - h/2;
-    d.draw_texture(texture, x, y, w, h, 0);
+    d.draw_texture(t, x, y, w, h, pid);
 }

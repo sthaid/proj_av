@@ -25,7 +25,7 @@ public:
 
     struct texture;
 
-    display(int w, int h);
+    display(int w, int h, bool resizeable=false);
     ~display();
     int get_win_width() { return win_width; }
     int get_win_height() { return win_height; }

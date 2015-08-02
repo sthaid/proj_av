@@ -3,8 +3,14 @@
 #include "logging.h"
 #include "utils.h"
 
-#define DISPLAY_WIDTH   (512 + 38 + 250)
-#define DISPLAY_HEIGHT  (512)
+#define GRID_WIDTH      800
+#define GRID_HEIGHT     800
+#define CTRL_WIDTH      600
+#define CTRL_HEIGHT     800
+#define PANE_SEPERATION 20
+
+#define DISPLAY_WIDTH   (GRID_WIDTH + PANE_SEPERATION + CTRL_WIDTH)
+#define DISPLAY_HEIGHT  (GRID_HEIGHT >= CTRL_HEIGHT ? GRID_HEIGHT : CTRL_HEIGHT)
 
 const double MAX_ZOOM = 31.99;
 const double MIN_ZOOM = 0.51;
@@ -18,22 +24,23 @@ double center_y = world::HEIGHT / 2;
 
 int main(int argc, char **argv)
 {
-    // create the world
-    // XXX check
-    world w("world.dat");
-
     // create the display
-    // XXX option for resizing?
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
+
+    // create the world
+    world w(d,"world.dat");
+    if (!w.read_ok()) {
+        WARNING("read world.dat failed" << endl);
+    }
 
     // loop
     while (true) {
         // start
-        d.start(0, 0, 512, 512,     // pane 0
-                550, 0, 250, 512);  // pane 1
+        d.start(0, 0, GRID_WIDTH, GRID_HEIGHT,                            // pane 0: x,y,w,h
+                GRID_WIDTH+PANE_SEPERATION, 0, CTRL_WIDTH, CTRL_HEIGHT);  // pane 1: x,y,w,h
 
         // draw the world
-        w.draw(d,0,center_x,center_y,zoom);
+        w.draw(0,center_x,center_y,zoom);
 
         // register for events
         int eid_quit      = d.event_register(display::ET_QUIT);
@@ -54,8 +61,8 @@ int main(int argc, char **argv)
         } else if (event.eid == eid_write) {
             w.write("world.dat");
         } else if (event.eid == eid_pan) {
-            center_x -= (double)event.val1 * 16 / zoom;
-            center_y -= (double)event.val2 * 16 / zoom;
+            center_x -= (double)event.val1 * 8 / zoom;
+            center_y -= (double)event.val2 * 8 / zoom;
         } else if (event.eid == eid_zoom) {
             if (event.val2 > 0 && zoom > MIN_ZOOM) {
                 zoom /= ZOOM_FACTOR;

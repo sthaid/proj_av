@@ -12,6 +12,10 @@ using std::endl;
     do { \
         cout << "INFO " << __func__ << ": " << x; \
     } while (0)
+#define WARNING(x) \
+    do { \
+        cout << "WARNING " << __func__ << ": " << x; \
+    } while (0)
 #define ERROR(x) \
     do { \
         cout << "ERROR " << __func__ << ": " << x; \

@@ -19,6 +19,15 @@ const double ZOOM_FACTOR = 1.1892071;
 double zoom = 0.5;
 double center_x = world::WIDTH / 2;
 double center_y = world::HEIGHT / 2;
+bool   create_roads = false;
+
+// XXX
+// pgm args : //  -e world.dat
+// controls for road creation
+//    - start location, and direction
+//    - steering
+// rest the world
+// force quit to discard changes   (WRITE, QUIT, FORCE_QUIT
 
 // -----------------  MAIN  ------------------------------------------------------------------------
 
@@ -33,6 +42,12 @@ int main(int argc, char **argv)
         WARNING("read world.dat failed" << endl);
     }
 
+    for (int i = 0; i < 100; i++) {
+        for (int j = 0; j < 100; j++) {
+            w.set_location(i,j,display::BLUE);
+        }
+    }
+
     // loop
     while (true) {
         // start
@@ -44,10 +59,10 @@ int main(int argc, char **argv)
 
         // register for events
         int eid_quit      = d.event_register(display::ET_QUIT);
-        int eid_write     = d.draw_text("WRITE",    1, 0, 1, true);      // r,c,pid,event
+        int eid_write     = d.text_draw("WRITE",    1, 0, 1, true);      // r,c,pid,event
         int eid_pan       = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_draw_road = d.draw_text("DRAW_RD",  3, 0, 1, true);
+        int eid_create_roads = d.text_draw("CREATE_ROADS",  3, 0, 1, true);
 
         // finish
         d.finish();
@@ -64,22 +79,41 @@ int main(int argc, char **argv)
             center_x -= (double)event.val1 * 8 / zoom;
             center_y -= (double)event.val2 * 8 / zoom;
         } else if (event.eid == eid_zoom) {
-            if (event.val2 > 0 && zoom > MIN_ZOOM) {
+            if (event.val2 < 0 && zoom > MIN_ZOOM) {
                 zoom /= ZOOM_FACTOR;
             }
-            if (event.val2 < 0 && zoom < MAX_ZOOM) {
+            if (event.val2 > 0 && zoom < MAX_ZOOM) {
                 zoom *= ZOOM_FACTOR;
             }
-        } else if (event.eid == eid_draw_road) {
-            INFO("DRAW " << endl);
+        } else if (event.eid == eid_create_roads) {
+            INFO("CREATE_ROADS starting " << endl);
+            create_roads = true;
         } else if (event.eid == display::EID_NONE) {
             ; 
         } else {
             FATAL("invalid eid " << event.eid << endl);
         }
 
+        // if draw mode is enabled then draw roads
+        if (create_roads) {
+            static int count = 0;
+            static double x = 0, y = 2000, dir = 0;
+
+            w.create_road_slice(x,y,dir);
+
+            dir += .1;
+
+            if (count++ > 4000) {
+                INFO("CREATE_ROADS complete " << endl);
+                create_roads = false;
+            }
+        }
+
         // delay 
         microsec_sleep(10000);
+
+        //static int count;
+        //INFO("count" << count++ << endl);
     }
 
     // exit

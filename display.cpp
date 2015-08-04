@@ -81,7 +81,7 @@ display::display(int w, int h, bool resizeable)
         FATAL("TTF_Init failed" << endl);
     }
 
-    // XXX configure font size
+    // xxx configure font size
     const char * font0_path = "fonts/FreeMonoBold.ttf";         // normal 
     int      font0_ptsize = win_height / 18 - 1;
     const char * font1_path = "fonts/FreeMonoBold.ttf";         // extra large
@@ -171,52 +171,10 @@ void display::finish()
 
 // -----------------  DRAWING  ---------------------------------------------------------
 
-void display::set_color(enum color color)
+void display::draw_set_color(enum color color)
 {
-    static const int red[] = {
-       255,     // RED         
-       255,     // ORANGE
-       255,     // YELLOW
-       0,       // GREEN
-       0,       // BLUE
-       127,     // PURPLE
-       0,       // BLACK
-       255,     // WHITE       
-       224,     // GRAY        
-       255,     // PINK 
-       0,       // LIGHT_BLUE
-            };
-
-    static const int green[] = {
-       0,       // RED         
-       128,     // ORANGE
-       255,     // YELLOW
-       255,     // GREEN
-       0,       // BLUE
-       0,       // PURPLE
-       0,       // BLACK
-       255,     // WHITE       
-       224,     // GRAY        
-       105,     // PINK 
-       255,     // LIGHT_BLUE
-            };
-
-    static const int blue[] = {
-       0,       // RED         
-       0,       // ORANGE
-       0,       // YELLOW
-       0,       // GREEN
-       255,     // BLUE
-       255,     // PURPLE
-       0,       // BLACK
-       255,     // WHITE       
-       224,     // GRAY        
-       180,     // PINK 
-       255,     // LIGHT_BLUE
-            };
-
     assert(color >= RED && color <= LIGHT_BLUE);
-    SDL_SetRenderDrawColor(renderer, red[color], green[color], blue[color], SDL_ALPHA_OPAQUE);
+    SDL_SetRenderDrawColor(renderer, colors[color].r, colors[color].g, colors[color].b, colors[color].a);
 }
 
 void display::draw_point(int x, int y, int pid)
@@ -272,28 +230,15 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
     SDL_RenderFillRect(renderer, &rect);
 }
 
-void display::draw_circle(int x, int y, int r, int pid)
-{
-    // xxx
-}
+// -----------------  TEXT  ------------------------------------------------------------
 
-void display::draw_filled_circle(int x, int y, int r, int pid)
-{
-    // xxx
-}
-
-int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
+int display::text_draw(std::string str, int row, int col, int pid, bool evreg,
                         int fid, bool center, int field_cols)
 {
     SDL_Surface    * surface = NULL;
     SDL_Texture    * texture = NULL;
-    SDL_Color        fg_color;
     SDL_Rect         pos;
     int              eid = EID_NONE;
-
-    static const SDL_Color fg_color_normal = {255,255,255,255}; 
-    static const SDL_Color fg_color_event  = {0,255,255,255}; 
-    static const SDL_Color bg_color        = {0,0,0,255}; 
 
     // if zero length string then nothing to do
     if (str.length() == 0) {
@@ -327,8 +272,9 @@ int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
     }
 
     // render the text to a surface, truncate str to at most field_cols
-    fg_color = (evreg ? fg_color_event : fg_color_normal); 
-    surface = TTF_RenderText_Shaded(font[fid].font, str.substr(0,field_cols).c_str(), fg_color, bg_color);
+    surface = TTF_RenderText_Shaded(font[fid].font, str.substr(0,field_cols).c_str(), 
+                                     evreg ? colors[LIGHT_BLUE] : colors[WHITE],
+                                     colors[BLACK]);
     if (surface == NULL) { 
         FATAL("TTF_RenderText_Shaded returned NULL" << endl);
     } 
@@ -371,7 +317,9 @@ int display::draw_text(std::string str, int row, int col, int pid, bool evreg,
     return eid;
 }
 
-struct display::texture * display::create_texture(unsigned char * pixels, int w, int h)
+// -----------------  TEXTURES  --------------------------------------------------------
+
+struct display::texture * display::texture_create(unsigned char * pixels, int w, int h)
 {
     // creae surface from pixels
     SDL_Surface * surface;
@@ -394,11 +342,30 @@ struct display::texture * display::create_texture(unsigned char * pixels, int w,
     // free the surface
     SDL_FreeSurface(surface); 
 
+    // assert that the texture has the expected pixel format
+    unsigned int fmt;
+    SDL_QueryTexture(texture, &fmt, NULL, NULL, NULL);                               
+    assert(fmt == SDL_PIXELFORMAT_ARGB8888);
+
     // return the texture
     return reinterpret_cast<struct texture *>(texture);
 }
 
-void display::destroy_texture(struct texture * t)
+void display::texture_modify_pixel(struct texture * t, int x, int y, enum color color)
+{
+    SDL_Color c = colors[color];
+    unsigned int pixel = (c.a << 24 ) | (c.r << 16) | (c.g << 8) | (c.b << 0);
+
+    SDL_Rect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.w = 1;
+    rect.h = 1;
+
+    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, &pixel, 1);
+}
+
+void display::texture_destroy(struct texture * t)
 {
     if (t == NULL) {
         return;
@@ -406,7 +373,7 @@ void display::destroy_texture(struct texture * t)
     SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(t));
 }
 
-void display::draw_texture(struct texture * t, int x, int y, int w, int h, int pid)
+void display::texture_draw(struct texture * t, int x, int y, int w, int h, int pid)
 {
     SDL_Rect dstrect, srcrect;
     int tw, th;
@@ -472,7 +439,7 @@ void display::draw_texture(struct texture * t, int x, int y, int w, int h, int p
     SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
 }
 
-// -----------------  EVENT HANDLING  --------------------------------------------------
+// -----------------  EVENTS  ----------------------------------------------------------
 
 int display::event_register(enum event_type et, int pid)
 {
@@ -484,14 +451,18 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
     assert(pid >= 0 && pid < max_pane);
     assert(max_eid < MAX_EID);
 
-#if 0
-    assert(x >= 0);
-    assert(y >= 0);
-    assert(w > 0);
-    assert(h > 0);
-    assert(x + w <= pane[pid].w);  // xxx maybe reduce instead
-    assert(y + h <= pane[pid].h);
-#endif
+    if (x < 0) {
+        x = 0;
+    }
+    if (x + w > pane[pid].w) {
+        w = pane[pid].w - x;
+    }
+    if (y < 0) {
+        y = 0;
+    }
+    if (y + h > pane[pid].h) {
+        h = pane[pid].h - y;
+    }
 
     eid_tbl[max_eid].et =  et;
     eid_tbl[max_eid].x  = x + pane[pid].x;

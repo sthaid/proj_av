@@ -37,19 +37,19 @@ public:
     void start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1);
     void finish();
 
-    void set_color(enum color);
+    void draw_set_color(enum color c);
     void draw_point(int x, int y, int pid=0);   // xxx multi
     void draw_line(int x1, int y1, int x2, int y2, int pid=0);   // xxx multi
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
-    void draw_circle(int x, int y, int r, int pid=0);
-    void draw_filled_circle(int x, int y, int r, int pid=0);
-    int draw_text(std::string str, int row, int col, int pid=0, bool evreg=false, 
+
+    int text_draw(std::string str, int row, int col, int pid=0, bool evreg=false,
                   int fid=0, bool center=false, int field_cols=999);
 
-    struct texture * create_texture(unsigned char * pixels, int w, int h);
-    void destroy_texture(struct texture * t);
-    void draw_texture(struct texture * t, int x, int y, int w, int h, int pid=0);
+    struct texture * texture_create(unsigned char * pixels, int w, int h);
+    void texture_modify_pixel(struct texture * t, int x, int y, enum color c);
+    void texture_destroy(struct texture * t);
+    void texture_draw(struct texture * t, int x, int y, int w, int h, int pid=0);
 
     int event_register(enum event_type et, int pid=0);
     int event_register(enum event_type et, int pid, int x, int y, int w, int h);

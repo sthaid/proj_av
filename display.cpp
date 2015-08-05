@@ -232,7 +232,7 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
 
 // -----------------  TEXT  ------------------------------------------------------------
 
-int display::text_draw(string str, int row, int col, int pid, bool evreg,
+int display::text_draw(string str, int row, int col, int pid, bool evreg, int key_alias,
                         int fid, bool center, int field_cols)
 {
     SDL_Surface    * surface = NULL;
@@ -303,14 +303,11 @@ int display::text_draw(string str, int row, int col, int pid, bool evreg,
     // if there is a event then save the location for the event handler
     if (evreg) {
         // restore pos.x and pos.y to pane base,
-        // and provide a 1/2 character larger area
-        pos.x -= (pane[pid].x + font[fid].char_width/2);
-        pos.y -= (pane[pid].y + font[fid].char_height/2);
-        pos.w += font[fid].char_width;
-        pos.h += font[fid].char_height;
+        pos.x -= pane[pid].x;
+        pos.y -= pane[pid].y;
 
         // register for the mouse click event
-        eid = event_register(ET_MOUSE_CLICK, pid, pos.x, pos.y, pos.w, pos.h);
+        eid = event_register(ET_MOUSE_CLICK, pid, pos.x, pos.y, pos.w, pos.h, key_alias);
     }
 
     // return the registered event id or EID_NONE
@@ -448,6 +445,11 @@ int display::event_register(enum event_type et, int pid)
 
 int display::event_register(enum event_type et, int pid, int x, int y, int w, int h)
 {
+    return event_register(et, pid, x, y, w, h, 0);
+}
+
+int display::event_register(enum event_type et, int pid, int x, int y, int w, int h, int key_alias)
+{
     assert(pid >= 0 && pid < max_pane);
     assert(max_eid < MAX_EID);
 
@@ -469,6 +471,7 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
     eid_tbl[max_eid].y  = y + pane[pid].y;
     eid_tbl[max_eid].w  = w;
     eid_tbl[max_eid].h  = h;
+    eid_tbl[max_eid].key_alias = key_alias;
 
     max_eid++;
 
@@ -660,32 +663,34 @@ struct display::event display::event_poll()
 
         case SDL_KEYDOWN: {
             int  key   = sdl_event.key.keysym.sym;
-            //bool shift = (sdl_event.key.keysym.mod & KMOD_SHIFT) != 0;
+            bool shift = (sdl_event.key.keysym.mod & KMOD_SHIFT) != 0;
             bool ctrl  = (sdl_event.key.keysym.mod & KMOD_CTRL) != 0;
+            int  val1  = 0;
             int  eid;
-            int  val1;
 
-            // process printscreen (^p)
-            if (ctrl && key == 'p') {
-                print_screen();
-                play_event_sound();
-                break;
-            }
-
-            // if ET_KEYBOARD is not registered then we're done
-            for (eid = 0; eid < max_eid; eid++) {
-                if (eid_tbl[eid].et == ET_KEYBOARD) {
-                    break;
+            // process control chars
+            if (ctrl) {
+                // printscreen
+                if (key == 'p') {
+                    print_screen();
+                    play_event_sound();
                 }
-            }
-            if (eid == max_eid) {
                 break;
             }
 
             // determine value to return with the event
-            // xxx handle shift 
-            if (key < 128) {
-                val1 = key;
+            // note: the following keyboard chars are supported:
+            //   a-z, A-Z, 0-9, space, home, end, pageup, pagedown
+            if (key >= 0 && key <= 255) {
+                if (islower(key)) {
+                    val1 = (!shift ? key : toupper(key));
+                } else if (isdigit(key) && !shift) {
+                    val1 = key;
+                } else if (isblank(key)) {
+                    val1 = key;
+                } else {
+                    break; // not an event
+                }
             } else if (key == SDLK_HOME) {
                 val1 = KEY_HOME;
             } else if (key == SDLK_END) {
@@ -694,6 +699,30 @@ struct display::event display::event_poll()
                 val1= KEY_PGUP;
             } else if (key == SDLK_PAGEDOWN) {
                 val1 = KEY_PGDN;
+            } else {
+                break; // not an event
+            }
+
+            // search for eid with matching key_alias
+            for (eid = 0; eid < max_eid; eid++) {
+                if (eid_tbl[eid].key_alias == val1) {
+                    break;
+                }
+            }
+
+            // if eid with matching key_alias is not found then 
+            // search for registered ET_KEYBOARD 
+            if (eid == max_eid) {
+                for (eid = 0; eid < max_eid; eid++) {
+                    if (eid_tbl[eid].et == ET_KEYBOARD) {
+                        break;
+                    }
+                }
+            }
+
+            // break out if no event found
+            if (eid == max_eid) {
+                break;
             }
 
             // fill in the event, and play event sound

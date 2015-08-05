@@ -18,6 +18,8 @@ public:
     world(display &display, string filename);
     ~world();
 
+    void clear();
+
     void read();
     void write();
     bool read_ok() { return read_ok_flag; }

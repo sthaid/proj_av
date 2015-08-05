@@ -1,4 +1,5 @@
 #include <fstream>
+#include <cassert>
 #include <memory.h>
 #include <math.h>
 
@@ -18,17 +19,12 @@ world::world(display &display, string fn) : d(display)
     write_ok_flag = false;
     filename = fn;
 
-    memset(location->c, display::GREEN, sizeof(location->c));
-
     read();
-
     if (!read_ok_flag) {
-        t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
+        clear();
     }
 
-    if (t == NULL) {
-        ERROR("create texture failed" << endl);
-    }
+    assert(t);
 }
 
 world::~world()
@@ -36,6 +32,13 @@ world::~world()
     INFO("desctructor" << endl);
     d.texture_destroy(t);
     delete location;
+}
+
+void world::clear()
+{
+    memset(location->c, display::GREEN, sizeof(location->c));
+    d.texture_destroy(t);
+    t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
 }
 
 void world::read()

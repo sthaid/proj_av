@@ -45,7 +45,7 @@ public:
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
 
-    int text_draw(string str, int row, int col, int pid=0, bool evreg=false,
+    int text_draw(string str, int row, int col, int pid=0, bool evreg=false, int key_alias=0,
                   int fid=0, bool center=false, int field_cols=999);
 
     struct texture * texture_create(unsigned char * pixels, int w, int h);
@@ -55,6 +55,7 @@ public:
 
     int event_register(enum event_type et, int pid=0);
     int event_register(enum event_type et, int pid, int x, int y, int w, int h);
+    int event_register(enum event_type et, int pid, int x, int y, int w, int h, int key_alias);
     struct event event_poll();
 private:
     // window state
@@ -83,6 +84,7 @@ private:
     struct {
         enum event_type et;
         int x, y, w, h;
+        int key_alias;
     } eid_tbl[MAX_EID];
     int max_eid;
     int mouse_button_state;

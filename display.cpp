@@ -232,7 +232,7 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
 
 // -----------------  TEXT  ------------------------------------------------------------
 
-int display::text_draw(std::string str, int row, int col, int pid, bool evreg,
+int display::text_draw(string str, int row, int col, int pid, bool evreg,
                         int fid, bool center, int field_cols)
 {
     SDL_Surface    * surface = NULL;
@@ -475,7 +475,7 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
     return max_eid-1;
 }
 
-struct display::event display::poll_event()
+struct display::event display::event_poll()
 {
     #define EID_TBL_POS_MATCH(_x,_y,_eid) (((_x) >= eid_tbl[_eid].x) && \
                                            ((_x) < eid_tbl[_eid].x + eid_tbl[_eid].w) && \

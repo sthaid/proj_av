@@ -10,26 +10,17 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
-world::world(display &display, std::string filename) : d(display)
+world::world(display &display, string fn) : d(display)
 {
     location = new struct location;
     t = NULL;
     read_ok_flag = false;
     write_ok_flag = false;
+    filename = fn;
 
     memset(location->c, display::GREEN, sizeof(location->c));
 
-#if 0 // xxx test
-    for (int i = 500; i < 525; i++) {
-        for (int j = 500; j < 525; j++) {
-            location->c[i][j] = display::BLACK;
-        }
-    }
-#endif
-
-    if (filename != "") {
-        read(filename);
-    }
+    read();
 
     if (!read_ok_flag) {
         t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
@@ -42,11 +33,12 @@ world::world(display &display, std::string filename) : d(display)
 
 world::~world()
 {
+    INFO("desctructor" << endl);
     d.texture_destroy(t);
     delete location;
 }
 
-void world::read(std::string filename)
+void world::read()
 {
     ifstream ifs;
 
@@ -72,7 +64,7 @@ void world::read(std::string filename)
     t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
 }
 
-void world::write(std::string filename)
+void world::write()
 {
     ofstream ofs;
 

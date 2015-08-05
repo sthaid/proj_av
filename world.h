@@ -4,6 +4,8 @@
 #include <string>
 #include "display.h"
 
+using std::string;
+
 class world {
 public:
     static const int WIDTH = 4096;
@@ -13,11 +15,11 @@ public:
         unsigned char c[HEIGHT][WIDTH];
     };
 
-    world(display &display, std::string filename="");
+    world(display &display, string filename);
     ~world();
 
-    void read(std::string filename);
-    void write(std::string filename);
+    void read();
+    void write();
     bool read_ok() { return read_ok_flag; }
     bool write_ok() { return write_ok_flag; }
 
@@ -33,6 +35,7 @@ private:
     display::texture *t;
     bool read_ok_flag;
     bool write_ok_flag;
+    string filename;
 };
 
 #endif

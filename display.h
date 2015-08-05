@@ -3,6 +3,8 @@
 
 #include <string>
 
+using std::string;
+
 class display {
 public:
     static const int EID_NONE = -1;
@@ -43,7 +45,7 @@ public:
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
 
-    int text_draw(std::string str, int row, int col, int pid=0, bool evreg=false,
+    int text_draw(string str, int row, int col, int pid=0, bool evreg=false,
                   int fid=0, bool center=false, int field_cols=999);
 
     struct texture * texture_create(unsigned char * pixels, int w, int h);
@@ -53,7 +55,7 @@ public:
 
     int event_register(enum event_type et, int pid=0);
     int event_register(enum event_type et, int pid, int x, int y, int w, int h);
-    struct event poll_event();
+    struct event event_poll();
 private:
     // window state
     struct SDL_Window * window; 

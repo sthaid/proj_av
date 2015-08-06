@@ -1,9 +1,13 @@
+#include <sstream>
 #include <unistd.h>
+#include <string.h>
 
 #include "display.h"
 #include "world.h"
 #include "logging.h"
 #include "utils.h"
+
+using std::ostringstream;
 
 #define PANE_WORLD_WIDTH      800
 #define PANE_WORLD_HEIGHT     800
@@ -74,8 +78,9 @@ int main_edit(string world_filename)
     enum mode { MAIN, CREATE_ROADS };
 
     const int MAX_MESSAGE_AGE = 200;
+    const int DELAY_MICROSECS = 10000;
 
-    enum mode       mode = MAIN;
+    enum mode             mode = MAIN;
     struct display::event event = {display::EID_NONE,0,0};
     bool                  done = false;
     bool                  create_roads_active = false;
@@ -85,6 +90,7 @@ int main_edit(string world_filename)
     int                   create_road_dir_idx = 5;
     string                message = "";
     int                   message_age = MAX_MESSAGE_AGE;
+    double                avg_cycle_time = DELAY_MICROSECS;
 
     // create the display
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
@@ -96,6 +102,17 @@ int main_edit(string world_filename)
 
     // loop
     while (!done) {
+        // determine average cycle time
+        {
+            const int   MAX_TIMES=10;
+            static long times[MAX_TIMES];
+            memmove(times+1, times, (MAX_TIMES-1)*sizeof(long));
+            times[0] = microsec_timer();
+            if (times[MAX_TIMES-1] != 0) {
+                avg_cycle_time = (times[0] - times[MAX_TIMES-1]) / (MAX_TIMES-1);
+            }
+        }
+            
         // start
         d.start(0, 0, PANE_WORLD_WIDTH, PANE_WORLD_HEIGHT,                                // pane 0: x,y,w,h
                 PANE_WORLD_WIDTH+PANE_SEPERATION, 0, PANE_CTRL_WIDTH, PANE_CTRL_HEIGHT);  // pane 1: x,y,w,h
@@ -105,12 +122,37 @@ int main_edit(string world_filename)
 
         // additional drawing: CREATE_ROADS mode
         if (mode == CREATE_ROADS) {
+            ostringstream s;
+
+            // xxx comments
             if (create_roads_active) {
-                w.create_road_slice(create_road_x, create_road_y, create_road_dir);
+                // xxx dont go off end of world
+                w.create_road_slice(create_road_x, create_road_y, create_road_dir);  //xxx return distance
+
                 create_road_dir += (create_road_dir_idx - 5) * 0.05;
+                if (create_road_dir < 0) {
+                    create_road_dir += 360;
+                } else if (create_road_dir > 360) {
+                    create_road_dir -= 360;
+                }
             }
 
             d.text_draw("^", 1, 2*(create_road_dir_idx-1), 1);
+
+            s.str("");
+            if (create_roads_active) {
+                int mph = 0.5 / avg_cycle_time * (3600000000.0 / 5280.0);
+                s << "RUNNING - SPEED " << mph;
+            } else {
+                s << "STOPPED";
+            }
+            d.text_draw(s.str(), 5, 0, 1);
+
+            s.str("");
+            s << "X,Y,DIR: " << static_cast<int>(create_road_x) << " " 
+                             << static_cast<int>(create_road_y) << " " 
+                             << static_cast<int>(create_road_dir);
+            d.text_draw(s.str(), 6, 0, 1);
         }
 
         // additional drawing: message box 
@@ -122,7 +164,7 @@ int main_edit(string world_filename)
         // register for events
         int eid_clear=-1, eid_write=-1, eid_reset=-1, eid_quit=-1, eid_quit_win=-1, eid_pan=-1, eid_zoom=-1;
         int eid_create_roads=-1;
-        int eid_1=-1, eid_9=-1, eid_go=-1, eid_stop=-1, eid_done=-1;
+        int eid_1=-1, eid_9=-1, eid_run=-1, eid_stop=-1, eid_done=-1;
         __attribute__((unused)) int eid_2=-1, eid_3=-1, eid_4=-1, eid_5=-1, eid_6=-1, eid_7=-1, eid_8=-1;
 
         eid_write        = d.text_draw("WRITE",        13,  0, 1, true);      
@@ -146,9 +188,9 @@ int main_edit(string world_filename)
             eid_7     = d.text_draw("7",             0,12, 1, true, '7');      
             eid_8     = d.text_draw("8",             0,14, 1, true, '8');  
             eid_9     = d.text_draw("9",             0,16, 1, true, '9');      
-            eid_go    = d.text_draw("GO",            3, 0, 1, true, 'g');      
-            eid_stop  = d.text_draw("STOP",          3, 8, 1, true, 's');      
-            eid_done  = d.text_draw("DONE",          5, 0, 1, true, 'd'); 
+            eid_run   = d.text_draw("RUN",           3, 0, 1, true, 'g');      
+            eid_stop  = d.text_draw("STOP",          3, 7, 1, true, 's');      
+            eid_done  = d.text_draw("DONE",          3,14, 1, true, 'd'); 
             break;
         }
 
@@ -207,7 +249,7 @@ int main_edit(string world_filename)
 
             // CREATE_ROADS mode events
             if (mode == CREATE_ROADS) {
-                if (event.eid == eid_go) {
+                if (event.eid == eid_run) {
                     create_roads_active = true;
                     break;
                 }
@@ -227,7 +269,7 @@ int main_edit(string world_filename)
         } while (0);
 
         // delay 
-        microsec_sleep(10000);
+        microsec_sleep(DELAY_MICROSECS);
     }
 
     return 0;

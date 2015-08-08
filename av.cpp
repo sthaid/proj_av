@@ -78,6 +78,7 @@ int main_edit(string world_filename)
     enum mode { MAIN, CREATE_ROADS };
 
     const int MAX_MESSAGE_AGE = 200;
+    //const int DELAY_MICROSECS = 1000000;  // XXX was 10000
     const int DELAY_MICROSECS = 10000;
 
     enum mode             mode = MAIN;
@@ -110,6 +111,12 @@ int main_edit(string world_filename)
             times[0] = microsec_timer();
             if (times[MAX_TIMES-1] != 0) {
                 avg_cycle_time = (times[0] - times[MAX_TIMES-1]) / (MAX_TIMES-1);
+            }
+
+            // XXX temp
+            static int count;
+            if ((++count % 100) == 0) {
+                INFO("AVG CYCLE TIME " << avg_cycle_time / 1000. << endl);
             }
         }
             

@@ -15,14 +15,31 @@ static const SDL_Color colors[256] = {
     { 255,   0,   0, 255 },    // RED         
     { 255, 128,   0, 255 },    // ORANGE
     { 255, 255,   0, 255 },    // YELLOW
-    { 0,   255,   0, 255 },    // GREEN
-    { 0,     0, 255, 255 },    // BLUE
+    {   0, 255,   0, 255 },    // GREEN
+    {   0,   0, 255, 255 },    // BLUE
     { 127,   0, 255, 255 },    // PURPLE
-    { 0,     0,   0, 255 },    // BLACK
+    {   0,   0,   0, 255 },    // BLACK
     { 255, 255, 255, 255 },    // WHITE       
     { 224, 224, 224, 255 },    // GRAY        
     { 255, 105, 180, 255 },    // PINK 
-    { 0,   255, 255, 255 },    // LIGHT_BLUE
+    {   0, 255, 255, 255 },    // LIGHT_BLUE
+    {   0,   0,   0,   0 },    // TRANSPARENT
+        };
+
+// SDL_PIXELFORMAT_ARGB8888
+static const unsigned int raw_pixel[256] = {
+    0xffff0000,                // RED         
+    0xffff8000,                // ORANGE
+    0xffffff00,                // YELLOW
+    0xff00ff00,                // GREEN
+    0xff0000ff,                // BLUE
+    0xff7f00ff,                // PURPLE
+    0xff000000,                // BLACK
+    0xffffffff,                // WHITE       
+    0xffe0e0e0,                // GRAY        
+    0xffff69b4,                // PINK 
+    0xff00ffff,                // LIGHT_BLUE
+    0x00000000,                // TRANSPARENT
         };
 
 // -----------------  CONSTRUCTOR & DESTRUCTOR  ----------------------------------------
@@ -316,6 +333,18 @@ int display::text_draw(string str, int row, int col, int pid, bool evreg, int ke
 
 // -----------------  TEXTURES  --------------------------------------------------------
 
+struct display::texture * display::texture_create(int w, int h)
+{
+    unsigned char * pixels;
+    texture * t;
+
+    pixels = new unsigned char [w*h];
+    memset(pixels,TRANSPARENT,w*h); 
+    t = texture_create(pixels,w,h);
+    delete [] pixels;    
+    return t;
+}
+
 struct display::texture * display::texture_create(unsigned char * pixels, int w, int h)
 {
     // creae surface from pixels
@@ -339,6 +368,9 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     // free the surface
     SDL_FreeSurface(surface); 
 
+    ret = SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    INFO("xxx SET BLEND " << ret << " " << SDL_GetError() << endl);
+
     // assert that the texture has the expected pixel format
     unsigned int fmt;
     SDL_QueryTexture(texture, &fmt, NULL, NULL, NULL);                               
@@ -348,10 +380,9 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     return reinterpret_cast<struct texture *>(texture);
 }
 
-void display::texture_modify_pixel(struct texture * t, int x, int y, enum color color)
+void display::texture_set_pixel(struct texture * t, int x, int y, enum color color)
 {
-    SDL_Color c = colors[color];
-    unsigned int pixel = (c.a << 24 ) | (c.r << 16) | (c.g << 8) | (c.b << 0);
+    unsigned int pixel = raw_pixel[color];
 
     SDL_Rect rect;
     rect.x = x;
@@ -360,6 +391,41 @@ void display::texture_modify_pixel(struct texture * t, int x, int y, enum color 
     rect.h = 1;
 
     SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, &pixel, 1);
+}
+
+void display::texture_clr_pixel(struct texture * t, int x, int y)
+{
+    texture_set_pixel(t, x, y, TRANSPARENT);
+}
+
+void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels)
+{
+    unsigned int raw_pixels[1024];  // xxx
+
+    SDL_Rect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+
+    for (int i = 0; i < w*h; i++) {
+        raw_pixels[i] = raw_pixel[pixels[i]];
+    }
+
+    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, raw_pixels, 4*w);
+}
+
+void display::texture_clr_rect(struct texture * t, int x, int y, int w, int h)
+{
+    static unsigned int transparent_pixels[1024];  // xxx
+
+    SDL_Rect rect;
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+
+    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, transparent_pixels, 4*w);
 }
 
 void display::texture_destroy(struct texture * t)

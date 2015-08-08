@@ -13,7 +13,8 @@ public:
     static const int KEY_PGUP = 130;
     static const int KEY_PGDN = 131;
 
-    enum color { RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, BLACK, WHITE, GRAY, PINK, LIGHT_BLUE };
+    enum color { RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, BLACK, WHITE, GRAY, PINK, LIGHT_BLUE,
+                 TRANSPARENT };
     enum event_type { ET_NONE=-1, ET_QUIT, 
                       ET_WIN_SIZE_CHANGE, ET_WIN_MINIMIZED, ET_WIN_RESTORED, 
                       ET_MOUSE_CLICK, ET_MOUSE_MOTION, ET_MOUSE_WHEEL, 
@@ -40,16 +41,20 @@ public:
     void finish();
 
     void draw_set_color(enum color c);
-    void draw_point(int x, int y, int pid=0);   // xxx multi
-    void draw_line(int x1, int y1, int x2, int y2, int pid=0);   // xxx multi
+    void draw_point(int x, int y, int pid=0);
+    void draw_line(int x1, int y1, int x2, int y2, int pid=0); 
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
 
     int text_draw(string str, int row, int col, int pid=0, bool evreg=false, int key_alias=0,
                   int fid=0, bool center=false, int field_cols=999);
 
+    struct texture * texture_create(int w, int h);
     struct texture * texture_create(unsigned char * pixels, int w, int h);
-    void texture_modify_pixel(struct texture * t, int x, int y, enum color c);
+    void texture_set_pixel(struct texture * t, int x, int y, enum color c);
+    void texture_clr_pixel(struct texture * t, int x, int y);
+    void texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels);
+    void texture_clr_rect(struct texture * t, int x, int y, int w, int h);
     void texture_destroy(struct texture * t);
     void texture_draw(struct texture * t, int x, int y, int w, int h, int pid=0);
 

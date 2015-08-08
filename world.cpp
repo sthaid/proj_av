@@ -14,7 +14,8 @@ using std::ios;
 world::world(display &display, string fn) : d(display)
 {
     location = new struct location;
-    t = NULL;
+    t = NULL;  // xxx name
+    t_ovl = NULL;
     read_ok_flag = false;
     write_ok_flag = false;
     filename = fn;
@@ -23,8 +24,11 @@ world::world(display &display, string fn) : d(display)
     if (!read_ok_flag) {
         clear();
     }
-
     assert(t);
+
+    t_ovl = d.texture_create(WIDTH, HEIGHT);
+    assert(t_ovl);
+    INFO("t_ovl " << t_ovl);
 }
 
 world::~world()
@@ -89,11 +93,55 @@ void world::draw(int pid, double center_x, double center_y, double zoom)
 {
     int w, h, x, y;
 
+    // XXX temp
+#if 0
+    static int count;
+    unsigned int pixels[6][15];
+    memset(pixels, 0, sizeof(pixels));
+    for (int i = 0; i < 200; i++) {
+        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
+    }
+
+    count++;
+    if (count > 3000) count = 0;
+
+    memset(pixels, 255, sizeof(pixels));
+    pixels[3][7] = 0;
+    pixels[3][8] = 0;
+    pixels[3][9] = 0;
+    pixels[3][10] = 0;
+    for (int i = 0; i < 200; i++) {
+        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
+    }
+#else
+    static int count;
+    unsigned char pixels[6][15];
+
+    for (int i = 0; i < 200; i++) {
+        d.texture_clr_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6);
+    }
+
+    count++;
+    if (count > 3000) count = 0;
+
+    memset(pixels, display::ORANGE, sizeof(pixels));
+    pixels[3][7] = display::TRANSPARENT;
+    pixels[3][8] = display::TRANSPARENT;
+    pixels[3][9] = display::TRANSPARENT;
+    pixels[3][10] = display::TRANSPARENT;
+    for (int i = 0; i < 200; i++) {
+        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
+    }
+#endif
+
+
+
     w = WIDTH / zoom;
     h = HEIGHT / zoom;
     x = center_x - w/2;
     y = center_y - h/2;
     d.texture_draw(t, x, y, w, h, pid);
+    d.texture_draw(t_ovl, x, y, w, h, pid);
 }
 
 void world::create_road_slice(double &x, double &y, double dir)
@@ -142,7 +190,7 @@ void world::set_location(double x, double y, unsigned char c)
     }
 
     location->c[iy][ix] = c;
-    d.texture_modify_pixel(t, ix, iy, static_cast<enum display::color>(c));
+    d.texture_set_pixel(t, ix, iy, static_cast<enum display::color>(c));
 }
 
 unsigned char world::get_location(double x, double y)

@@ -380,17 +380,15 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     return reinterpret_cast<struct texture *>(texture);
 }
 
-void display::texture_set_pixel(struct texture * t, int x, int y, enum color color)
+void display::texture_set_pixel(struct texture * t, int x, int y, unsigned char pixel)
 {
-    unsigned int pixel = raw_pixel[color];
-
     SDL_Rect rect;
     rect.x = x;
     rect.y = y;
     rect.w = 1;
     rect.h = 1;
 
-    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, &pixel, 1);
+    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, &raw_pixel[pixel], 1);
 }
 
 void display::texture_clr_pixel(struct texture * t, int x, int y)

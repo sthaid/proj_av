@@ -1,7 +1,8 @@
 #ifndef __DISPLAY_H__
 #define __DISPLAY_H__
 
-#include <string>
+// XXX typedef for pixel_t
+#include <string>  // xxx don't include stuff here ?
 
 using std::string;
 
@@ -30,6 +31,7 @@ public:
 
     display(int w, int h, bool resizeable=false);
     ~display();
+
     int get_win_width() { return win_width; }
     int get_win_height() { return win_height; }
     bool get_win_minimized() { return win_minimized; }
@@ -51,7 +53,7 @@ public:
 
     struct texture * texture_create(int w, int h);
     struct texture * texture_create(unsigned char * pixels, int w, int h);
-    void texture_set_pixel(struct texture * t, int x, int y, enum color c);
+    void texture_set_pixel(struct texture * t, int x, int y, unsigned char pixel);
     void texture_clr_pixel(struct texture * t, int x, int y);
     void texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels);
     void texture_clr_rect(struct texture * t, int x, int y, int w, int h);

@@ -8,41 +8,52 @@ using std::string;
 
 class world {
 public:
-    static const int WIDTH = 4096;
-    static const int HEIGHT = 4096;
+    static const int WORLD_WIDTH = 4096;
+    static const int WORLD_HEIGHT = 4096;
 
     world(display &display, string filename);
     ~world();
 
-    void clear();
+    void place_car_init();  // xxx better names
+    void place_car(double x, double y, double dir);
 
+    void draw(int pid, double center_x, double center_y, double zoom);
+
+    void create_road_slice(double &x, double &y, double dir);
+    void clear();
     void read();
     void write();
     bool read_ok() { return read_ok_flag; }
     bool write_ok() { return write_ok_flag; }
-
-    void draw(int pid, double center_x, double center_y, double zoom);
-
-//XXX draw cars
-
-    void create_road_slice(double &x, double &y, double dir);
-
 private:
-    // XXX  work this
-    struct location { // xxx private ?
-        unsigned char c[HEIGHT][WIDTH];
-    };
-
+    // display
     display &d;
-    struct location *location;
-    display::texture *t;
-    display::texture *t_ovl;
+
+    // static pixels
+    unsigned char (*static_pixels)[WORLD_WIDTH];
+    display::texture *static_pixels_texture;
+    void set_static_pixel(double x, double y, unsigned char c);
+    unsigned char get_static_pixel(double x, double y);
+
+    // dynamic pixels
+    struct rect {
+        int x,y,w,h;
+    };
+    unsigned char (*dynamic_pixels)[WORLD_WIDTH];
+    display::texture *dynamic_pixels_texture;
+    struct rect dynamic_pixels_list[1000];
+    int dynamic_pixels_list_max;
+
+    // car pixels
+    static const int CAR_WIDTH = 17;
+    static const int CAR_HEIGHT = 17;
+    unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
+    void init_car_pixels();
+
+    // read / write static pixels
+    string filename;
     bool read_ok_flag;
     bool write_ok_flag;
-    string filename;
-
-    void set_location(double x, double y, unsigned char c);
-    unsigned char get_location(double x, double y);
 };
 
 #endif

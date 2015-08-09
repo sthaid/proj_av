@@ -11,38 +11,212 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
+// -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
+
 world::world(display &display, string fn) : d(display)
 {
-    location = new struct location;
-    t = NULL;  // xxx name
-    t_ovl = NULL;
-    read_ok_flag = false;
-    write_ok_flag = false;
-    filename = fn;
+    static_pixels           = new unsigned char [WORLD_HEIGHT] [WORLD_WIDTH];
+    static_pixels_texture   = NULL;
+    dynamic_pixels          = new unsigned char [WORLD_HEIGHT] [WORLD_WIDTH];
+    dynamic_pixels_texture  = NULL;
+    memset(dynamic_pixels_list, 0, sizeof(dynamic_pixels_list));
+    dynamic_pixels_list_max = 0;
+    memset(car_pixels, 0, sizeof(car_pixels));
+    filename                = fn;
+    read_ok_flag            = false;
+    write_ok_flag           = false;
 
     read();
     if (!read_ok_flag) {
         clear();
     }
-    assert(t);
+    assert(static_pixels_texture);
 
-    t_ovl = d.texture_create(WIDTH, HEIGHT);
-    assert(t_ovl);
-    INFO("t_ovl " << t_ovl);
+    dynamic_pixels_texture = d.texture_create(WORLD_WIDTH, WORLD_HEIGHT);
+    assert(dynamic_pixels_texture);
+
+    init_car_pixels();
 }
 
 world::~world()
 {
-    INFO("desctructor" << endl);
-    d.texture_destroy(t);
-    delete location;
+    d.texture_destroy(static_pixels_texture);
+    d.texture_destroy(dynamic_pixels_texture);
+    delete [] static_pixels;
+    delete [] dynamic_pixels;
+}
+
+// -----------------  CAR SUPPORT  --------------------------------------------------
+
+void world::place_car_init()
+{
+    for (int i = 0; i < dynamic_pixels_list_max; i++) {
+        struct rect &rect = dynamic_pixels_list[i];
+        d.texture_clr_rect(dynamic_pixels_texture, rect.x, rect.y, rect.w, rect.h);
+    }
+    dynamic_pixels_list_max = 0;
+}
+
+void world::place_car(double x_arg, double y_arg, double dir_arg)
+{
+    int x   = (x_arg + 0.5);
+    int y   = (y_arg + 0.5);
+    int dir = (dir_arg + 0.5);
+
+    x -= CAR_WIDTH / 2;
+    y -= CAR_HEIGHT / 2;
+    dir = (dir % 360);
+    if (dir < 0) dir += 360;
+
+    d.texture_set_rect(dynamic_pixels_texture, 
+                       x, y, CAR_WIDTH, CAR_HEIGHT, 
+                       reinterpret_cast<unsigned char *>(car_pixels[dir]));
+
+    struct rect &rect = dynamic_pixels_list[dynamic_pixels_list_max];
+    rect.x = x;
+    rect.y = y;
+    rect.w = CAR_WIDTH;
+    rect.h = CAR_HEIGHT;
+    dynamic_pixels_list_max++;
+
+    // XXX xet the pixels too;  and clr them osmetime
+}
+
+// called by constructor
+void world::init_car_pixels()
+{
+    // create car at 0 degree rotation
+    unsigned char (&car)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[0];
+    memset(car, display::TRANSPARENT, sizeof(car));
+    for (int h = 5; h <= 11; h++) {
+        for (int w = 1; w <= 15; w++) {
+            car[h][w] = display::BLUE;
+        }
+    }
+    car[5][15]  = display::WHITE;   // head lights
+    car[6][15]  = display::WHITE;
+    car[10][15] = display::WHITE;
+    car[11][15] = display::WHITE;
+    car[5][14]  = display::WHITE;
+    car[6][14]  = display::WHITE;
+    car[10][14] = display::WHITE;
+    car[11][14] = display::WHITE;
+    car[5][1]   = display::RED;     // tail lights
+    car[6][1]   = display::RED;
+    car[10][1]  = display::RED;
+    car[11][1]  = display::RED;
+    car[5][2]   = display::RED;
+    car[6][2]   = display::RED;
+    car[10][2]  = display::RED;
+    car[11][2]  = display::RED;
+
+    // create cars at 1 to 359 degrees rotation, 
+    // using the car created above at 0 degrees as a template
+    for (int dir = 1; dir <= 359; dir++) {
+        double sin_dir = sin(dir *  M_PI/180.0);
+        double cos_dir = cos(dir *  M_PI/180.0);
+        unsigned char (&carprime)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[dir];
+        int x,y,xprime,yprime;
+
+        #define OVSF 2  // Over Sample Factor
+        memset(carprime, display::TRANSPARENT, sizeof(car));
+        for (y = 0; y < CAR_HEIGHT*OVSF; y++) {
+            for (x = 0; x < CAR_WIDTH*OVSF; x++) {
+                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.0001;
+                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.0001;
+                if (xprime < 0 || xprime >= CAR_WIDTH*OVSF || yprime < 0 || yprime >= CAR_HEIGHT*OVSF) {
+                    continue;
+                }
+                carprime[yprime/OVSF][xprime/OVSF] = car[y/OVSF][x/OVSF];
+            }
+        }
+    }
+}
+
+// -----------------  DRAW THE WORLD  -----------------------------------------------
+
+void world::draw(int pid, double center_x, double center_y, double zoom)
+{
+    int w, h, x, y;
+
+    w = WORLD_WIDTH / zoom;
+    h = WORLD_HEIGHT / zoom;
+    x = center_x - w/2;
+    y = center_y - h/2;
+
+    d.texture_draw(static_pixels_texture, x, y, w, h, pid);
+    d.texture_draw(dynamic_pixels_texture, x, y, w, h, pid);
+}
+
+// -----------------  EDIT STATIC PIXELS SUPPORT  -----------------------------------
+
+void world::create_road_slice(double &x, double &y, double dir)
+{
+    double dx, dy, dpx, dpy, tmpx, tmpy;
+
+    dy  = .5 * sin(dir * (M_PI/180.0));
+    dx  = .5 * cos(dir * (M_PI/180.0));
+    dpy = .5 * sin((dir+90) * (M_PI/180.0));
+    dpx = .5 * cos((dir+90) * (M_PI/180.0));
+
+    set_static_pixel(x,y,display::YELLOW);
+
+    tmpx = x;
+    tmpy = y;
+    for (int i = 1; i <= 24; i++) {
+        tmpx += dpx;
+        tmpy += dpy;
+        if (get_static_pixel(tmpx,tmpy) == display::GREEN) {
+            set_static_pixel(tmpx,tmpy,display::BLACK);
+        }
+    }
+
+    tmpx = x;
+    tmpy = y;
+    for (int i = 1; i <= 24; i++) {
+        tmpx -= dpx;
+        tmpy -= dpy;
+        if (get_static_pixel(tmpx,tmpy) == display::GREEN) {
+            set_static_pixel(tmpx,tmpy,display::BLACK);
+        }
+    }
+
+    x += dx;
+    y += dy;
+}
+        
+void world::set_static_pixel(double x, double y, unsigned char p) 
+{
+    int ix = x + .5;
+    int iy = y + .5;
+
+    if (ix < 0 || ix >= WORLD_WIDTH || iy < 0 || iy >= WORLD_HEIGHT) {
+        return;
+    }
+
+    static_pixels[iy][ix] = p;
+    d.texture_set_pixel(static_pixels_texture, ix, iy, p);
+}
+
+unsigned char world::get_static_pixel(double x, double y)
+{
+    int ix = x + .5;
+    int iy = y + .5;
+
+    if (ix < 0 || ix >= WORLD_WIDTH || iy < 0 || iy >= WORLD_HEIGHT) {
+        ERROR("ix " << ix << " iy " << iy << endl);
+        return display::GREEN;
+    }
+
+    return static_pixels[iy][ix];
 }
 
 void world::clear()
 {
-    memset(location->c, display::GREEN, sizeof(location->c));
-    d.texture_destroy(t);
-    t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
+    memset(static_pixels, display::GREEN, WORLD_WIDTH*WORLD_HEIGHT); 
+    d.texture_destroy(static_pixels_texture);
+    static_pixels_texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), 
+                                             WORLD_WIDTH, WORLD_HEIGHT);
 }
 
 void world::read()
@@ -55,20 +229,21 @@ void world::read()
         ERROR(filename << " does not exist" << endl);
         return;
     }
-    if (ifs.tellg() != sizeof(struct location)) {
+    if (ifs.tellg() != WORLD_WIDTH*WORLD_HEIGHT) {
         ERROR(filename << " has incorrect size" << endl);
         return;
     }
     ifs.seekg(0,ios::beg);
-    ifs.read(reinterpret_cast<char*>(location), sizeof(struct location));
+    ifs.read(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT); 
     if (!ifs.good()) {
         ERROR(filename << " read failed" << endl);
         return;
     }
     read_ok_flag = true;
 
-    d.texture_destroy(t);
-    t = d.texture_create(reinterpret_cast<unsigned char *>(location->c), WIDTH, HEIGHT);
+    d.texture_destroy(static_pixels_texture);
+    static_pixels_texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), 
+                                             WORLD_WIDTH, WORLD_HEIGHT);
 }
 
 void world::write()
@@ -81,127 +256,10 @@ void world::write()
         ERROR(filename << " create failed" << endl);
         return;
     }
-    ofs.write(reinterpret_cast<char*>(location), sizeof(struct location));
+    ofs.write(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT);  
     if (!ofs.good()) {
         ERROR(filename << " write failed" << endl);
         return;
     }
     write_ok_flag = true;
-}
-
-void world::draw(int pid, double center_x, double center_y, double zoom)
-{
-    int w, h, x, y;
-
-    // XXX temp
-#if 0
-    static int count;
-    unsigned int pixels[6][15];
-    memset(pixels, 0, sizeof(pixels));
-    for (int i = 0; i < 200; i++) {
-        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
-    }
-
-    count++;
-    if (count > 3000) count = 0;
-
-    memset(pixels, 255, sizeof(pixels));
-    pixels[3][7] = 0;
-    pixels[3][8] = 0;
-    pixels[3][9] = 0;
-    pixels[3][10] = 0;
-    for (int i = 0; i < 200; i++) {
-        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
-    }
-#else
-    static int count;
-    unsigned char pixels[6][15];
-
-    for (int i = 0; i < 200; i++) {
-        d.texture_clr_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6);
-    }
-
-    count++;
-    if (count > 3000) count = 0;
-
-    memset(pixels, display::ORANGE, sizeof(pixels));
-    pixels[3][7] = display::TRANSPARENT;
-    pixels[3][8] = display::TRANSPARENT;
-    pixels[3][9] = display::TRANSPARENT;
-    pixels[3][10] = display::TRANSPARENT;
-    for (int i = 0; i < 200; i++) {
-        d.texture_set_rect(t_ovl, (20*i)%4000 + count, (20*i)%4000, 15, 6, reinterpret_cast<unsigned char *>(pixels));
-    }
-#endif
-
-
-
-    w = WIDTH / zoom;
-    h = HEIGHT / zoom;
-    x = center_x - w/2;
-    y = center_y - h/2;
-    d.texture_draw(t, x, y, w, h, pid);
-    d.texture_draw(t_ovl, x, y, w, h, pid);
-}
-
-void world::create_road_slice(double &x, double &y, double dir)
-{
-    double dx, dy, dpx, dpy, tmpx, tmpy;
-
-    dy  = .5 * sin(dir * (M_PI/180.0));
-    dx  = .5 * cos(dir * (M_PI/180.0));
-    dpy = .5 * sin((dir+90) * (M_PI/180.0));
-    dpx = .5 * cos((dir+90) * (M_PI/180.0));
-
-    set_location(x,y,display::YELLOW);
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 24; i++) {
-        tmpx += dpx;
-        tmpy += dpy;
-        if (get_location(tmpx,tmpy) == display::GREEN) {
-            set_location(tmpx,tmpy,display::BLACK);
-        }
-    }
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 24; i++) {
-        tmpx -= dpx;
-        tmpy -= dpy;
-        if (get_location(tmpx,tmpy) == display::GREEN) {
-            set_location(tmpx,tmpy,display::BLACK);
-        }
-    }
-
-    x += dx;
-    y += dy;
-}
-        
-// XXX add integer versions
-void world::set_location(double x, double y, unsigned char c) 
-{
-    int ix = x + .5;
-    int iy = y + .5;
-
-    if (ix < 0 || ix >= WIDTH || iy < 0 || iy >= HEIGHT) {
-        return;
-    }
-
-    location->c[iy][ix] = c;
-    d.texture_set_pixel(t, ix, iy, static_cast<enum display::color>(c));
-}
-
-unsigned char world::get_location(double x, double y)
-{
-    int ix = x + .5;
-    int iy = y + .5;
-
-    if (ix < 0 || ix >= WIDTH || iy < 0 || iy >= HEIGHT) {
-        ERROR("ix " << ix << " iy " << iy << endl);
-        return display::GREEN;
-    }
-
-    return location->c[iy][ix];
 }

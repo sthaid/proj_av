@@ -65,7 +65,7 @@ void world::place_car(double x_arg, double y_arg, double dir_arg)
 
     x -= CAR_WIDTH / 2;
     y -= CAR_HEIGHT / 2;
-    dir = (dir % 360);
+    dir = ((dir + 270) % 360);
     if (dir < 0) dir += 360;
 
     d.texture_set_rect(dynamic_pixels_texture, 
@@ -153,6 +153,8 @@ void world::draw(int pid, double center_x, double center_y, double zoom)
 void world::create_road_slice(double &x, double &y, double dir)
 {
     double dx, dy, dpx, dpy, tmpx, tmpy;
+
+    dir += 270;
 
     dy  = .5 * sin(dir * (M_PI/180.0));
     dx  = .5 * cos(dir * (M_PI/180.0));

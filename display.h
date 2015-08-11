@@ -8,17 +8,21 @@ using std::string;
 
 class display {
 public:
-    static const int EID_NONE = -1;
-    static const int KEY_HOME = 128;
-    static const int KEY_END  = 129;
-    static const int KEY_PGUP = 130;
-    static const int KEY_PGDN = 131;
+    static const int EID_NONE  = -1;
+    static const int KEY_HOME  = 128;
+    static const int KEY_END   = 129;
+    static const int KEY_PGUP  = 130;
+    static const int KEY_PGDN  = 131;
+    static const int KEY_UP    = 132;
+    static const int KEY_DOWN  = 133;
+    static const int KEY_LEFT  = 134;
+    static const int KEY_RIGHT = 135;
 
     enum color { RED, ORANGE, YELLOW, GREEN, BLUE, PURPLE, BLACK, WHITE, GRAY, PINK, LIGHT_BLUE,
                  TRANSPARENT };
     enum event_type { ET_NONE=-1, ET_QUIT, 
                       ET_WIN_SIZE_CHANGE, ET_WIN_MINIMIZED, ET_WIN_RESTORED, 
-                      ET_MOUSE_CLICK, ET_MOUSE_MOTION, ET_MOUSE_WHEEL, 
+                      ET_MOUSE_LEFT_CLICK, ET_MOUSE_RIGHT_CLICK, ET_MOUSE_MOTION, ET_MOUSE_WHEEL, 
                       ET_KEYBOARD };
 
     struct event {
@@ -94,10 +98,9 @@ private:
         int key_alias;
     } eid_tbl[MAX_EID];
     int max_eid;
-    int mouse_button_state;
-    int mouse_button_motion_eid;
-    int mouse_button_x;
-    int mouse_button_y;
+    int mouse_motion_eid;
+    int mouse_motion_x;
+    int mouse_motion_y;
     struct Mix_Chunk * event_sound;
     void play_event_sound(void);
 

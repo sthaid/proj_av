@@ -59,10 +59,9 @@ display::display(int w, int h, bool resizeable)
     bzero(font,sizeof(font));
     bzero(eid_tbl,sizeof(eid_tbl));
     max_eid = 0;
-    mouse_button_state = 0;
-    mouse_button_motion_eid = 0;
-    mouse_button_x = 0;
-    mouse_button_y = 0;
+    mouse_motion_eid = EID_NONE;
+    mouse_motion_x = 0;
+    mouse_motion_y = 0;
     event_sound = NULL;
 
     // initialize Simple DirectMedia Layer  (SDL)
@@ -324,7 +323,7 @@ int display::text_draw(string str, int row, int col, int pid, bool evreg, int ke
         pos.y -= pane[pid].y;
 
         // register for the mouse click event
-        eid = event_register(ET_MOUSE_CLICK, pid, pos.x, pos.y, pos.w, pos.h, key_alias);
+        eid = event_register(ET_MOUSE_LEFT_CLICK, pid, pos.x, pos.y, pos.w, pos.h, key_alias);
     }
 
     // return the registered event id or EID_NONE
@@ -566,18 +565,6 @@ struct display::event display::event_poll()
         (x) == SDL_WINDOWEVENT_CLOSE        ? "SDL_WINDOWEVENT_CLOSE"        : \
                                               "????")
 
-    #define MOUSE_BUTTON_STATE_NONE     0
-    #define MOUSE_BUTTON_STATE_DOWN     1
-    #define MOUSE_BUTTON_STATE_MOTION   2
-
-    #define MOUSE_BUTTON_STATE_RESET \
-        do { \
-            mouse_button_state = MOUSE_BUTTON_STATE_NONE; \
-            mouse_button_motion_eid = EID_NONE; \
-            mouse_button_x = 0; \
-            mouse_button_y = 0; \
-        } while (0)
-
     SDL_Event sdl_event;
     struct event event;
 
@@ -596,7 +583,7 @@ struct display::event display::event_poll()
         // - updates win_width, win_height, win_minimized
         switch (sdl_event.type) {
         case SDL_MOUSEBUTTONDOWN: {
-            DEBUG("MOUSE DOWN which=" << sdl_event.button.which << 
+            INFO ("MOUSE DOWN which=" << sdl_event.button.which << 
                   " button=" << (sdl_event.button.button == SDL_BUTTON_LEFT   ? "LEFT" :
                                  sdl_event.button.button == SDL_BUTTON_MIDDLE ? "MIDDLE" :
                                  sdl_event.button.button == SDL_BUTTON_RIGHT  ? "RIGHT" :
@@ -608,37 +595,62 @@ struct display::event display::event_poll()
                   " y=" << sdl_event.button.y << 
                   endl);
 
-            // if not the left button then get out
-            if (sdl_event.button.button != SDL_BUTTON_LEFT) {
-                break;
-            }
-
-            // reset mouse_button_state
-            MOUSE_BUTTON_STATE_RESET;
-
-            // check for mouse-click event
-            for (int eid = 0; eid < max_eid; eid++) {
-                if (eid_tbl[eid].et == ET_MOUSE_CLICK &&
-                    EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
-                {
-                    event.eid = eid;
-                    event.val1 = 0; // not used for mouse click event
-                    event.val2 = 0; 
+            // if left button check then ...
+            if (sdl_event.button.button == SDL_BUTTON_LEFT) {
+                // check for registered left mouse click event
+                for (int eid = 0; eid < max_eid; eid++) {
+                    if (eid_tbl[eid].et == ET_MOUSE_LEFT_CLICK &&
+                        EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
+                    {
+                        event.eid = eid;
+                        event.val1 = sdl_event.button.x - eid_tbl[eid].x;
+                        event.val2 = sdl_event.button.y - eid_tbl[eid].y;
+                        break;
+                    }
+                }
+                if (event.eid != EID_NONE) {
+                    play_event_sound();
                     break;
                 }
-            }
 
-            // if the above found a match in the eid_tbl then 
-            // play event sound, and we are done
-            if (event.eid != EID_NONE) {
-                play_event_sound();
+                // check for registered mouse motion event
+                for (int eid = 0; eid < max_eid; eid++) {
+                    if (eid_tbl[eid].et == ET_MOUSE_MOTION &&
+                        EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
+                    {
+                        INFO("GOT MOUSE MOTION for eid " << eid << endl);
+                        mouse_motion_eid = eid;
+                        mouse_motion_x = sdl_event.button.x;
+                        mouse_motion_y = sdl_event.button.y;
+                        break;
+                    }
+                }
+
+                // done with mouse click processing
                 break;
             }
 
-            // it is not a text event, so set MOUSE_BUTTON_STATE_DOWN
-            mouse_button_state = MOUSE_BUTTON_STATE_DOWN;
-            mouse_button_x = sdl_event.button.x;
-            mouse_button_y = sdl_event.button.y;
+            // if right button then ...
+            if (sdl_event.button.button == SDL_BUTTON_RIGHT) {
+                // check for registered right mouse click event
+                for (int eid = 0; eid < max_eid; eid++) {
+                    if (eid_tbl[eid].et == ET_MOUSE_RIGHT_CLICK &&
+                        EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
+                    {
+                        event.eid = eid;
+                        event.val1 = sdl_event.button.x - eid_tbl[eid].x;
+                        event.val2 = sdl_event.button.y - eid_tbl[eid].y;
+                        break;
+                    }
+                }
+                if (event.eid != EID_NONE) {
+                    play_event_sound();
+                    break;
+                }
+
+                // done with mouse click processing
+                break;
+            }
             break; }
 
         case SDL_MOUSEBUTTONUP: {
@@ -654,53 +666,31 @@ struct display::event display::event_poll()
                   " y=" << sdl_event.button.y << 
                   endl);
 
-            // if not the left button then get out
-            if (sdl_event.button.button != SDL_BUTTON_LEFT) {
+            // if left button is up then clear mouse motion
+            if (sdl_event.button.button == SDL_BUTTON_LEFT) {
+                mouse_motion_eid = EID_NONE;
                 break;
             }
 
-            // reset mouse_button_state,
-            // this is where MOUSE_BUTTON_STATE_MOTION state is exitted
-            MOUSE_BUTTON_STATE_RESET;
+            // no processing for other mouse buttons up
             break; }
 
         case SDL_MOUSEMOTION: {
-            // if MOUSE_BUTTON_STATE_NONE then get out
-            if (mouse_button_state == MOUSE_BUTTON_STATE_NONE) {
-                break;
-            }
-
-            // if in MOUSE_BUTTON_STATE_DOWN then check for mouse motion event; and if so
-            // then set state to MOUSE_BUTTON_STATE_MOTION
-            if (mouse_button_state == MOUSE_BUTTON_STATE_DOWN) {
-                for (int eid = 0; eid < max_eid; eid++) {
-                    if (eid_tbl[eid].et == ET_MOUSE_MOTION &&
-                        EID_TBL_POS_MATCH(sdl_event.motion.x, sdl_event.motion.y, eid)) 
-                    {
-                        mouse_button_state = MOUSE_BUTTON_STATE_MOTION;
-                        mouse_button_motion_eid = eid;
-                        break;
-                    }
-                }
-            }
-
-            // if did not find mouse_motion_event and not already in MOUSE_BUTTON_STATE_MOTION then 
-            // reset mouse_button_state, and get out
-            if (mouse_button_state != MOUSE_BUTTON_STATE_MOTION) {
-                MOUSE_BUTTON_STATE_RESET;
+            // if mouse motion is not active then break
+            if (mouse_motion_eid == EID_NONE) {
                 break;
             }
 
             // get all additional pending mouse motion events, and sum the motion
             // xxx what if pos left the pane
-            event.eid = mouse_button_motion_eid;
+            event.eid = mouse_motion_eid;
             event.val1 = 0;  // delta_x
             event.val2 = 0;  // delta_y
             do {
-                event.val1 += sdl_event.motion.x - mouse_button_x;
-                event.val2 += sdl_event.motion.y - mouse_button_y;
-                mouse_button_x = sdl_event.motion.x;
-                mouse_button_y = sdl_event.motion.y;
+                event.val1 += sdl_event.motion.x - mouse_motion_x;
+                event.val2 += sdl_event.motion.y - mouse_motion_y;
+                mouse_motion_x = sdl_event.motion.x;
+                mouse_motion_y = sdl_event.motion.y;
             } while (SDL_PeepEvents(&sdl_event, 1, SDL_GETEVENT, SDL_MOUSEMOTION, SDL_MOUSEMOTION) == 1);
             break; }
 
@@ -763,6 +753,14 @@ struct display::event display::event_poll()
                 val1= KEY_PGUP;
             } else if (key == SDLK_PAGEDOWN) {
                 val1 = KEY_PGDN;
+            } else if (key == SDLK_UP) {
+                val1 = KEY_UP;
+            } else if (key == SDLK_DOWN) {
+                val1 = KEY_DOWN;
+            } else if (key == SDLK_RIGHT) {
+                val1 = KEY_RIGHT;
+            } else if (key == SDLK_LEFT) {
+                val1 = KEY_LEFT;
             } else {
                 break; // not an event
             }

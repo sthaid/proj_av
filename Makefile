@@ -1,6 +1,6 @@
 TARGETS = av
-H_FILES = display.h event_sound.h world.h logging.h utils.h
-CREATE_OBJS = av.o display.o world.o utils.o
+H_FILES = display.h event_sound.h world.h car.h logging.h utils.h
+CREATE_OBJS = av.o display.o world.o car.o utils.o
 
 CC = g++
 CPPFLAGS = -std=gnu++11 -Wall -g -O0 $(shell sdl2-config --cflags) 
@@ -29,4 +29,5 @@ clean:
 av.o: av.cpp $(H_FILES)
 display.o: display.cpp $(H_FILES)
 world.o: world.cpp $(H_FILES)
+car.o: car.cpp $(H_FILES)
 utils.o: utils.cpp $(H_FILES)

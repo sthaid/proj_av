@@ -334,6 +334,8 @@ int main_edit(string world_filename)
 // AAA
 int main_av(string world_filename)
 {
+    typedef class fixed_control_car CAR;
+
     const int    MAX_CAR = 100;
     const int    MAX_MESSAGE_AGE = 200;
     const int    DELAY_MICROSECS = 10000;
@@ -343,7 +345,7 @@ int main_av(string world_filename)
     enum mode    mode = PAUSE;
     string       message = "";
     int          message_age = MAX_MESSAGE_AGE;
-    class car  * car[MAX_CAR];
+    CAR        * car[MAX_CAR];
     int          max_car = 0;
     bool         done = false;
 
@@ -356,10 +358,12 @@ int main_av(string world_filename)
     message_age = 0;
 
     // create cars
+#if 0
     for (double dir = 0; dir < 360; dir += 10) {
-        car[max_car] = new class car(2048,2048,dir, 10);
-        max_car++;
+        car[max_car++] = new CAR(2048,2048,dir, 10);
     }
+#endif
+    car[max_car++] = new CAR(2048,2048,0,0);
 
     // loop
     while (!done) {
@@ -371,7 +375,8 @@ int main_av(string world_filename)
         w.place_car_init();
         for (int i = 0; i < max_car; i++) {
             if (mode == RUN) {            
-                car[i]->update(DELAY_MICROSECS);  //xxx what interval value to use
+                car[i]->update_controls(DELAY_MICROSECS);
+                car[i]->update_mechanics(DELAY_MICROSECS);  //xxx what interval value to use
             }
             w.place_car(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
         }

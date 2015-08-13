@@ -20,28 +20,52 @@ car::~car()
 {
 }
 
-// -----------------  SET CAR CONTROLS  ---------------------------------------------
+// -----------------  UPDATE CAR CONTROLS  ------------------------------------------
 
-void car::set_speed_ctl(double v)
+void car::set_steer_ctl(double val) 
 {
-    speed_ctl = v;
+    steer_ctl = val;
 }
 
-void car::set_steer_ctl(double v)
+void car::set_speed_ctl(double val) 
 {
-    steer_ctl = v;
+    speed_ctl = val;
 }
 
 // -----------------  UPDATE CAR POSITION, DIR, SPEED--------------------------------
 
-void car::update(double microsecs)
+// xxx very preliminary
+void car::update_mechanics(double microsecs)
 {
+    const double MAX_SPEED = 30;  // mph
+
     double distance;
-    // xxx very preliminary
+
+    // units:
+    // - distance:  feet
+    // - speed:     mph
+    // - dir:       degrees
+    // - steer_ctl: degrees/sec
+    // - speed_ctl: mph/sec
+
+    // XXX max steer_ctl and speed_ctl needed
 
     distance = speed * microsecs * (5280./3600./1e6);
-
     x += distance * cos((dir+270.) * (M_PI/180.0));
     y += distance * sin((dir+270.) * (M_PI/180.0));
+
+    dir += steer_ctl * (microsecs / 1000000.);
+    if (dir < 0) {
+        dir += 360;
+    } else if (dir > 360) {
+        dir -= 360;
+    }
+    
+    speed += speed_ctl * (microsecs / 1000000.);
+    if (speed < 0) {
+        speed = 0;
+    } else if (speed > MAX_SPEED) {
+        speed = MAX_SPEED;
+    }
 }
 

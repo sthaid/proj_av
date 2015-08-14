@@ -25,8 +25,6 @@ double zoom = 1.0 / ZOOM_FACTOR;
 double center_x = world::WORLD_WIDTH / 2;
 double center_y = world::WORLD_HEIGHT / 2;
 
-int main_av(string world_filename);
-
 // -----------------  MAIN  ------------------------------------------------------------------------
 
 int main(int argc, char **argv)
@@ -47,7 +45,11 @@ int main(int argc, char **argv)
     int          max_car = 0;
     CAR        * car[MAX_CAR];
 
-    // get options
+    //
+    // INITIALIZATION
+    //
+
+    // get options, and args
     while (true) {
         char opt_char = getopt(argc, argv, "");
         if (opt_char == -1) {
@@ -58,8 +60,6 @@ int main(int argc, char **argv)
             return 1;
         }
     }
-
-    // get args
     if ((argc - optind) >= 1) {
         world_filename = argv[optind];
     }
@@ -80,24 +80,48 @@ int main(int argc, char **argv)
 #endif
     car[max_car++] = new CAR(2048,2048,0,0);
 
-    // loop
+    //
+    // MAIN LOOP
+    //
+
     while (!done) {
+        //
+        // CAR SIMULATION
+        // 
+
+        // update all car mechanics: position, direction, speed
+        if (mode == RUN) {            
+            for (int i = 0; i < max_car; i++) {
+                car[i]->update_mechanics(DELAY_MICROSECS);
+            }
+        }
+
+        // update car positions in the world 
+        w.place_car_init();
+        for (int i = 0; i < max_car; i++) {
+            w.place_car(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
+        }
+
+        // update all car controls: steering and speed
+        if (mode == RUN) {            
+            for (int i = 0; i < max_car; i++) {
+                car[i]->update_controls(DELAY_MICROSECS);
+            }
+        }
+
+        //
+        // DISPLAY UPDATE 
+        // 
+
         // start display update
         d.start(0, 0, PANE_WORLD_WIDTH, PANE_WORLD_HEIGHT,                                // pane 0: x,y,w,h
                 PANE_WORLD_WIDTH+PANE_SEPERATION, 0, PANE_CTRL_WIDTH, PANE_CTRL_HEIGHT);  // pane 1: x,y,w,h
 
-        // update car positions
-        w.place_car_init();
-        for (int i = 0; i < max_car; i++) {
-            if (mode == RUN) {            
-                car[i]->update_controls(DELAY_MICROSECS);
-                car[i]->update_mechanics(DELAY_MICROSECS);  //xxx what interval value to use
-            }
-            w.place_car(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
-        }
-
         // draw world 
         w.draw(0,center_x,center_y,zoom);
+
+        // draw car view
+        // XXX tbd   c.draw()
 
         // draw the message box
         if (message_age < MAX_MESSAGE_AGE) {
@@ -115,7 +139,10 @@ int main(int argc, char **argv)
         // finish, updates the display
         d.finish();
 
-        // event handling
+        //
+        // EVENT HADNLING 
+        // 
+
         struct display::event event = d.event_poll();
         do {
             if (event.eid == display::EID_NONE) {
@@ -149,7 +176,10 @@ int main(int argc, char **argv)
             }
         } while(0);
 
-        // delay 
+        //
+        // DELAY
+        // 
+
         microsec_sleep(DELAY_MICROSECS);
     }
 

@@ -59,7 +59,7 @@ public:
     struct texture * texture_create(unsigned char * pixels, int w, int h);
     void texture_set_pixel(struct texture * t, int x, int y, unsigned char pixel);
     void texture_clr_pixel(struct texture * t, int x, int y);
-    void texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels);
+    void texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels, int pitch);
     void texture_clr_rect(struct texture * t, int x, int y, int w, int h);
     void texture_destroy(struct texture * t);
     void texture_draw(struct texture * t, int x, int y, int w, int h, int pid=0);

@@ -73,12 +73,13 @@ int main(int argc, char **argv)
     message_age = 0;
 
     // create cars
-#if 0
+#if 1
     for (double dir = 0; dir < 360; dir += 10) {
         car[max_car++] = new CAR(2048,2048,dir, 10);
     }
-#endif
+#else
     car[max_car++] = new CAR(2048,2048,0,0);
+#endif
 
     //
     // MAIN LOOP
@@ -181,6 +182,25 @@ int main(int argc, char **argv)
         // 
 
         microsec_sleep(DELAY_MICROSECS);
+
+        // determine average cycle time
+        // XXX make this a routine
+        {
+            const int   MAX_TIMES=10;
+            static long times[MAX_TIMES];
+            int avg_cycle_time = 0;
+            memmove(times+1, times, (MAX_TIMES-1)*sizeof(long));
+            times[0] = microsec_timer();
+            if (times[MAX_TIMES-1] != 0) {
+                avg_cycle_time = (times[0] - times[MAX_TIMES-1]) / (MAX_TIMES-1);
+            }
+
+            // xxx temp
+            static int count;
+            if ((++count % 100) == 0) {
+                INFO("AVG CYCLE TIME " << avg_cycle_time / 1000. << endl);
+            }
+        }
     }
 
     return 0;

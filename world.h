@@ -14,7 +14,7 @@ public:
     world(display &display, string filename);
     ~world();
 
-    void place_car_init();  // xxx better names
+    void place_car_init();
     void place_car(double x, double y, double dir);
 
     void draw(int pid, double center_x, double center_y, double zoom);
@@ -29,20 +29,15 @@ private:
     // display
     display &d;
 
-    // static pixels
-    unsigned char (*static_pixels)[WORLD_WIDTH];
-    display::texture *static_pixels_texture;
-    void set_static_pixel(double x, double y, unsigned char c);
-    unsigned char get_static_pixel(double x, double y);
-
-    // dynamic pixels
+    // world data
     struct rect {
         int x,y,w,h;
     };
-    unsigned char (*dynamic_pixels)[WORLD_WIDTH];
-    display::texture *dynamic_pixels_texture;
-    struct rect dynamic_pixels_list[1000];
-    int dynamic_pixels_list_max;
+    unsigned char (*static_pixels)[WORLD_WIDTH];
+    unsigned char (*pixels)[WORLD_WIDTH];
+    display::texture *texture;
+    struct rect placed_car_list[1000];
+    int max_placed_car_list;
 
     // car pixels
     static const int CAR_WIDTH = 17;
@@ -50,7 +45,11 @@ private:
     unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
     void init_car_pixels();
 
-    // read / write static pixels
+    // edit static pixels support
+    void set_static_pixel(double x, double y, unsigned char c);
+    unsigned char get_static_pixel(double x, double y);
+
+    // read / write static_pixels
     string filename;
     bool read_ok_flag;
     bool write_ok_flag;

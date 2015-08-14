@@ -397,7 +397,7 @@ void display::texture_clr_pixel(struct texture * t, int x, int y)
 
 void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels, int pitch)
 {
-    unsigned int raw_pixels[1024];  // xxx
+    unsigned int raw_pixels[20000];  // xxx
     unsigned int * rp = raw_pixels;
     SDL_Rect rect;
 
@@ -418,7 +418,7 @@ void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, u
 
 void display::texture_clr_rect(struct texture * t, int x, int y, int w, int h)
 {
-    static unsigned int transparent_pixels[1024];  // xxx
+    static unsigned int transparent_pixels[20000];  // xxx
 
     SDL_Rect rect;
     rect.x = x;

@@ -1,5 +1,5 @@
 TARGETS = av edw
-H_FILES = display.h event_sound.h world.h car.h logging.h utils.h
+H_FILES = display.h event_sound.h world.h car.h fixed_control_car.h logging.h utils.h
 AV_OBJS = av.o display.o world.o utils.o car.o fixed_control_car.o 
 EDW_OBJS = edw.o display.o world.o utils.o
 

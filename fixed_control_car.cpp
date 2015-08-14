@@ -1,11 +1,11 @@
 #include <math.h>
 
-#include "car.h"
+#include "fixed_control_car.h"
 #include "logging.h"
 #include "utils.h"
 
-fixed_control_car::fixed_control_car(double x, double y, double dir, double speed)
-    : car(x,y,dir,speed)
+fixed_control_car::fixed_control_car(display &display, double x, double y, double dir, double speed)
+    : car(display,x,y,dir,speed)
 {
 }
 

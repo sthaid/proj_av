@@ -1,4 +1,5 @@
 #include <math.h>
+#include <memory.h>
 
 #include "car.h"
 #include "logging.h"
@@ -6,7 +7,7 @@
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
-car::car(double x_arg, double y_arg, double dir_arg, double speed_arg)
+car::car(display &display, double x_arg, double y_arg, double dir_arg, double speed_arg) : d(display)
 {
     x         = x_arg;
     y         = y_arg;
@@ -14,10 +15,22 @@ car::car(double x_arg, double y_arg, double dir_arg, double speed_arg)
     speed     = speed_arg;
     speed_ctl = 0;
     steer_ctl = 0;
+    memset(front_view, display::BLUE, sizeof(front_view));
+
+    texture = d.texture_create(reinterpret_cast<unsigned char *>(front_view), 100, 100);
 }
 
 car::~car()
 {
+    d.texture_destroy(texture);
+}
+
+// -----------------  DRAW CAR STATE  -----------------------------------------------
+
+void car::draw(int front_view_pid, int dashboard_pid)
+{
+    // INFO("CAR DRAW\n");
+    d.texture_draw(texture, 0, 0, 100, 100, front_view_pid);
 }
 
 // -----------------  UPDATE CAR CONTROLS  ------------------------------------------
@@ -34,19 +47,19 @@ void car::set_speed_ctl(double val)
 
 // -----------------  UPDATE CAR POSITION, DIR, SPEED--------------------------------
 
-// xxx very preliminary
+// units:
+// - distance:  feet
+// - speed:     mph
+// - dir:       degrees
+// - steer_ctl: degrees/sec
+// - speed_ctl: mph/sec
+
+// xxx preliminary
 void car::update_mechanics(double microsecs)
 {
     const double MAX_SPEED = 30;  // mph
 
     double distance;
-
-    // units:
-    // - distance:  feet
-    // - speed:     mph
-    // - dir:       degrees
-    // - steer_ctl: degrees/sec
-    // - speed_ctl: mph/sec
 
     // XXX max steer_ctl and speed_ctl needed
 
@@ -67,5 +80,15 @@ void car::update_mechanics(double microsecs)
     } else if (speed > MAX_SPEED) {
         speed = MAX_SPEED;
     }
+
+    // XXX set front_view
+    if (front_view[0][0] == display::GREEN) {
+        // INFO("SET GREEN\n");
+        memset(front_view, display::RED, sizeof(front_view));
+    } else {
+        // INFO("SET RED\n");
+        memset(front_view, display::GREEN, sizeof(front_view));
+    }
+    d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
 }
 

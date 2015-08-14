@@ -4,10 +4,11 @@
 
 #include "display.h"
 #include "world.h"
-#include "car.h"
+#include "fixed_control_car.h"
 #include "logging.h"
 #include "utils.h"
 
+// XXX panes for car display   1,2
 #define PANE_WORLD_WIDTH     800
 #define PANE_WORLD_HEIGHT    800
 #define PANE_CTRL_WIDTH      600
@@ -75,10 +76,10 @@ int main(int argc, char **argv)
     // create cars
 #if 1
     for (double dir = 0; dir < 360; dir += 10) {
-        car[max_car++] = new CAR(2048,2048,dir, 10);
+        car[max_car++] = new CAR(d,2048,2048,dir, 10);
     }
 #else
-    car[max_car++] = new CAR(2048,2048,0,0);
+    car[max_car++] = new CAR(d,2048,2048,0,0);
 #endif
 
     //
@@ -121,8 +122,8 @@ int main(int argc, char **argv)
         // draw world 
         w.draw(0,center_x,center_y,zoom);
 
-        // draw car view
-        // XXX tbd   c.draw()
+        // draw car state
+        car[0]->draw(1,2);
 
         // draw the message box
         if (message_age < MAX_MESSAGE_AGE) {

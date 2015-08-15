@@ -2,10 +2,11 @@
 #define __CAR_H__
 
 #include "display.h"
+#include "world.h"
 
 class car {
 public:
-    car(display &display, double x, double y, double dir, double speed=0);
+    car(display &display, world &w, double x, double y, double dir, double speed=0);
     ~car();
 
     double get_x() { return x; }
@@ -28,6 +29,9 @@ private:
     // display
     display &d;
     display::texture *texture;
+
+    // world
+    world &w;
 
     // car state
     double x;

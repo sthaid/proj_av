@@ -156,6 +156,21 @@ void world::init_car_pixels()
     }
 }
 
+// -----------------  GET VIEW OF THE WORLD  ----------------------------------------
+
+void world::get_view(double x_arg, double y_arg, double dir, int w, int h, unsigned char * p)
+{
+    int x_view = x_arg + 0.5;
+    int y_view = y_arg + 0.5;
+    int x_start = x_view - w/2;
+
+    for (int y = y_view-h+1; y <= y_view; y++) {
+        for (int x = x_start; x < x_start+w; x++) {
+            *p++ = pixels[y][x];
+        }
+    }
+}
+
 // -----------------  DRAW THE WORLD  -----------------------------------------------
 
 void world::draw(int pid, double center_x, double center_y, double zoom)

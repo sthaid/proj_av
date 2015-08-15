@@ -5,7 +5,7 @@
 
 class fixed_control_car : public car {
 public:
-    fixed_control_car(display &d, double x, double y, double dir, double speed=0);
+    fixed_control_car(display &d, world &world, double x, double y, double dir, double speed=0);
     ~fixed_control_car();
 
     virtual void update_controls(double microsecs);

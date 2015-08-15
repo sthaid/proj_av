@@ -76,10 +76,10 @@ int main(int argc, char **argv)
     // create cars
 #if 1
     for (double dir = 0; dir < 360; dir += 10) {
-        car[max_car++] = new CAR(d,2048,2048,dir, 10);
+        car[max_car++] = new CAR(d,w,2048,2048,dir, 10);
     }
 #else
-    car[max_car++] = new CAR(d,2048,2048,0,0);
+    car[max_car++] = new CAR(d,w,2048,2048,0,0);
 #endif
 
     //

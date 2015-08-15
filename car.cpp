@@ -7,7 +7,8 @@
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
-car::car(display &display, double x_arg, double y_arg, double dir_arg, double speed_arg) : d(display)
+car::car(display &display, world &world, double x_arg, double y_arg, double dir_arg, double speed_arg) 
+    : d(display), w(world)
 {
     x         = x_arg;
     y         = y_arg;
@@ -30,6 +31,7 @@ car::~car()
 void car::draw(int front_view_pid, int dashboard_pid)
 {
     // INFO("CAR DRAW\n");
+    d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
     d.texture_draw(texture, 0, 0, 100, 100, front_view_pid);
 }
 
@@ -63,10 +65,12 @@ void car::update_mechanics(double microsecs)
 
     // XXX max steer_ctl and speed_ctl needed
 
+    // update car position based on current direction and speed
     distance = speed * microsecs * (5280./3600./1e6);
     x += distance * cos((dir+270.) * (M_PI/180.0));
     y += distance * sin((dir+270.) * (M_PI/180.0));
 
+    // update car direction based upon steering control 
     dir += steer_ctl * (microsecs / 1000000.);
     if (dir < 0) {
         dir += 360;
@@ -74,6 +78,7 @@ void car::update_mechanics(double microsecs)
         dir -= 360;
     }
     
+    // update car speed based on speed control 
     speed += speed_ctl * (microsecs / 1000000.);
     if (speed < 0) {
         speed = 0;
@@ -81,14 +86,7 @@ void car::update_mechanics(double microsecs)
         speed = MAX_SPEED;
     }
 
-    // XXX set front_view
-    if (front_view[0][0] == display::GREEN) {
-        // INFO("SET GREEN\n");
-        memset(front_view, display::RED, sizeof(front_view));
-    } else {
-        // INFO("SET RED\n");
-        memset(front_view, display::GREEN, sizeof(front_view));
-    }
-    d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
+    // set front_view
+    w.get_view(x, y, dir, 100, 100, reinterpret_cast<unsigned char *>(front_view));
 }
 

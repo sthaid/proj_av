@@ -4,8 +4,8 @@
 #include "logging.h"
 #include "utils.h"
 
-fixed_control_car::fixed_control_car(display &display, double x, double y, double dir, double speed)
-    : car(display,x,y,dir,speed)
+fixed_control_car::fixed_control_car(display &display, world &world, double x, double y, double dir, double speed)
+    : car(display,world,x,y,dir,speed)
 {
 }
 

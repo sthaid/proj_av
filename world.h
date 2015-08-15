@@ -17,6 +17,8 @@ public:
     void place_car_init();
     void place_car(double x, double y, double dir);
 
+    void get_view(double x, double y, double dir, int w, int h, unsigned char * pixels);
+
     void draw(int pid, double center_x, double center_y, double zoom);
 
     void create_road_slice(double &x, double &y, double dir);

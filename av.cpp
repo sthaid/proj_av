@@ -32,7 +32,7 @@ int main(int argc, char **argv)
 {
     typedef class fixed_control_car CAR;
 
-    const int    MAX_CAR = 100;
+    const int    MAX_CAR = 1000;  // xxx check this 
     const int    MAX_MESSAGE_AGE = 200;
     const int    DELAY_MICROSECS = 10000;
 
@@ -70,6 +70,7 @@ int main(int argc, char **argv)
 
     // xxx
     world::static_init();
+    car::static_init(d);
 
     // create the world
     world w(d,world_filename);
@@ -78,13 +79,12 @@ int main(int argc, char **argv)
 
     // create cars
 #if 1
-    for (double dir = 0; dir < 360; dir += 10) {
+    for (double dir = 0; dir < 360; dir += 1) {
         car[max_car++] = new CAR(d,w,2048,2048,dir, 10);
     }
 #else
     car[max_car++] = new CAR(d,w,2048,2048,0,0);
 #endif
-    //car[max_car++] = new CAR(d,w,2048,2048,20, 10);
 
     //
     // MAIN LOOP
@@ -129,7 +129,7 @@ int main(int argc, char **argv)
         w.draw(0,center_x,center_y,zoom);
 
         // draw car state
-        car[1]->draw(1,2);
+        car[0]->draw(1,2);
 
         // draw the message box
         if (message_age < MAX_MESSAGE_AGE) {

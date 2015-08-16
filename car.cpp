@@ -1,9 +1,19 @@
+// #include <cassert>    // XXX common header file ?
 #include <math.h>
 #include <memory.h>
 
 #include "car.h"
 #include "logging.h"
 #include "utils.h"
+
+// -----------------  CAR CLASS STATIC INITIALIZATION  ------------------------------
+
+display::texture *car::texture;
+
+void car::static_init(display &d)
+{
+    texture = d.texture_create(100, 100);
+}
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
@@ -17,20 +27,25 @@ car::car(display &display, world &world, double x_arg, double y_arg, double dir_
     speed_ctl = 0;
     steer_ctl = 0;
     memset(front_view, display::BLUE, sizeof(front_view));
-
-    texture = d.texture_create(reinterpret_cast<unsigned char *>(front_view), 100, 100);
 }
 
 car::~car()
 {
-    d.texture_destroy(texture);
+    // XXX destroy the last
+    // XXX d.texture_destroy(texture);
 }
 
 // -----------------  DRAW CAR STATE  -----------------------------------------------
 
 void car::draw(int front_view_pid, int dashboard_pid)
 {
-    // INFO("CAR DRAW\n");
+    //if (texture == NULL) {
+        //texture = d.texture_create(100, 100);
+        //INFO("XXXXXXXXXXXXXX texture " << texture << endl);
+        //assert(texture);
+        //// XXX need a way to undo this 
+    //}
+
     d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
     d.texture_draw(texture, 0, 0, 100, 100, front_view_pid);
 }

@@ -362,7 +362,7 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     // create texture from surface
     SDL_Texture * texture;
     texture = SDL_CreateTextureFromSurface(renderer, surface);
-    INFO("texture " << texture << endl);
+    INFO("texture " << texture << " " << SDL_GetError() << " renderer " << renderer << endl);
 
     // free the surface
     SDL_FreeSurface(surface); 

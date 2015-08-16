@@ -9,6 +9,8 @@ public:
     car(display &display, world &w, double x, double y, double dir, double speed=0);
     ~car();
 
+    static void static_init(display &d);
+
     double get_x() { return x; }
     double get_y() { return y; }
     double get_dir() { return dir; }
@@ -28,7 +30,7 @@ public:
 private:
     // display
     display &d;
-    display::texture *texture;
+    static display::texture *texture;
 
     // world
     world &w;

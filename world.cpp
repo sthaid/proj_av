@@ -11,6 +11,85 @@ using std::ifstream;
 using std::ofstream;
 using std::ios;
 
+// -----------------  WORLD CLASS STATIC INITIALIZATION  ----------------------------
+
+unsigned char world::car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
+short world::get_view_dx_tbl[360][100][100];
+short world::get_view_dy_tbl[360][100][100];
+
+void world::static_init(void)
+{
+    //
+    // init car_pixels ...
+    //
+
+    // create car at 0 degree rotation
+    unsigned char (&car)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[0];
+    memset(car, display::TRANSPARENT, sizeof(car));
+    for (int h = 5; h <= 11; h++) {
+        for (int w = 1; w <= 15; w++) {
+            car[h][w] = display::BLUE;
+        }
+    }
+    car[5][15]  = display::WHITE;   // head lights
+    car[6][15]  = display::WHITE;
+    car[10][15] = display::WHITE;
+    car[11][15] = display::WHITE;
+    car[5][14]  = display::WHITE;
+    car[6][14]  = display::WHITE;
+    car[10][14] = display::WHITE;
+    car[11][14] = display::WHITE;
+    car[5][1]   = display::RED;     // tail lights
+    car[6][1]   = display::RED;
+    car[10][1]  = display::RED;
+    car[11][1]  = display::RED;
+    car[5][2]   = display::RED;
+    car[6][2]   = display::RED;
+    car[10][2]  = display::RED;
+    car[11][2]  = display::RED;
+
+    // create cars at 1 to 359 degrees rotation, 
+    // using the car created above at 0 degrees as a template
+    for (int dir = 1; dir <= 359; dir++) {
+        double sin_dir = sin(dir *  M_PI/180.0);
+        double cos_dir = cos(dir *  M_PI/180.0);
+        unsigned char (&carprime)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[dir];
+        int x,y,xprime,yprime;
+
+        #define OVSF 2  // Over Sample Factor
+        memset(carprime, display::TRANSPARENT, sizeof(car));
+        for (y = 0; y < CAR_HEIGHT*OVSF; y++) {
+            for (x = 0; x < CAR_WIDTH*OVSF; x++) {
+                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.0001;
+                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.0001;
+                if (xprime < 0 || xprime >= CAR_WIDTH*OVSF || yprime < 0 || yprime >= CAR_HEIGHT*OVSF) {
+                    continue;
+                }
+                carprime[yprime/OVSF][xprime/OVSF] = car[y/OVSF][x/OVSF];
+            }
+        }
+    }
+
+    //
+    // init get_view rotation tables
+    // XXX print size of the tables
+    // XXX increase size of tables
+    // XXX have referencers of these tables check the size
+    // 
+
+    int d1,h1,w1;
+    for (d1 = 0; d1 < 360; d1++) {
+        double sindir = sin(d1 * (M_PI/180.0));
+        double cosdir = cos(d1 * (M_PI/180.0));
+        for (h1 = 0; h1 < 100; h1++) {
+            for (w1 = -50; w1 < 50; w1++) {
+                get_view_dx_tbl[d1][h1][w1+50] = w1 * cosdir + h1 * sindir;
+                get_view_dy_tbl[d1][h1][w1+50] = w1 * sindir - h1 * cosdir;
+            }
+        }
+    }
+}
+
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
 world::world(display &display, string fn) : d(display)
@@ -22,7 +101,6 @@ world::world(display &display, string fn) : d(display)
     texture                 = NULL;
     memset(placed_car_list, 0, sizeof(placed_car_list));
     max_placed_car_list     = 0;
-    memset(car_pixels, 0, sizeof(car_pixels));
     filename                = "";
     read_ok_flag            = false;
     write_ok_flag           = false;
@@ -33,8 +111,6 @@ world::world(display &display, string fn) : d(display)
         clear();
     }
     assert(texture);
-
-    init_car_pixels();
 }
 
 world::~world()
@@ -105,68 +181,23 @@ void world::place_car(double x_arg, double y_arg, double dir_arg)
                        WORLD_WIDTH);
 }
 
-// called by constructor
-void world::init_car_pixels()
-{
-    // create car at 0 degree rotation
-    unsigned char (&car)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[0];
-    memset(car, display::TRANSPARENT, sizeof(car));
-    for (int h = 5; h <= 11; h++) {
-        for (int w = 1; w <= 15; w++) {
-            car[h][w] = display::BLUE;
-        }
-    }
-    car[5][15]  = display::WHITE;   // head lights
-    car[6][15]  = display::WHITE;
-    car[10][15] = display::WHITE;
-    car[11][15] = display::WHITE;
-    car[5][14]  = display::WHITE;
-    car[6][14]  = display::WHITE;
-    car[10][14] = display::WHITE;
-    car[11][14] = display::WHITE;
-    car[5][1]   = display::RED;     // tail lights
-    car[6][1]   = display::RED;
-    car[10][1]  = display::RED;
-    car[11][1]  = display::RED;
-    car[5][2]   = display::RED;
-    car[6][2]   = display::RED;
-    car[10][2]  = display::RED;
-    car[11][2]  = display::RED;
-
-    // create cars at 1 to 359 degrees rotation, 
-    // using the car created above at 0 degrees as a template
-    for (int dir = 1; dir <= 359; dir++) {
-        double sin_dir = sin(dir *  M_PI/180.0);
-        double cos_dir = cos(dir *  M_PI/180.0);
-        unsigned char (&carprime)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[dir];
-        int x,y,xprime,yprime;
-
-        #define OVSF 2  // Over Sample Factor
-        memset(carprime, display::TRANSPARENT, sizeof(car));
-        for (y = 0; y < CAR_HEIGHT*OVSF; y++) {
-            for (x = 0; x < CAR_WIDTH*OVSF; x++) {
-                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.0001;
-                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.0001;
-                if (xprime < 0 || xprime >= CAR_WIDTH*OVSF || yprime < 0 || yprime >= CAR_HEIGHT*OVSF) {
-                    continue;
-                }
-                carprime[yprime/OVSF][xprime/OVSF] = car[y/OVSF][x/OVSF];
-            }
-        }
-    }
-}
-
 // -----------------  GET VIEW OF THE WORLD  ----------------------------------------
 
-void world::get_view(double x_arg, double y_arg, double dir, int w, int h, unsigned char * p)
+void world::get_view(double x_arg, double y_arg, double dir_arg, int w_arg, int h_arg, unsigned char * p_arg)
 {
-    int x_view = x_arg + 0.5;
-    int y_view = y_arg + 0.5;
-    int x_start = x_view - w/2;
+    int x = x_arg + 0.5;
+    int y = y_arg + 0.5;
+    int d = dir_arg + 0.5;
 
-    for (int y = y_view-h+1; y <= y_view; y++) {
-        for (int x = x_start; x < x_start+w; x++) {
-            *p++ = pixels[y][x];
+    if (d == 360) d = 0;  // XXX
+
+    assert(d >= 0 && d <= 359);
+
+    for (int h = h_arg-1; h >= 0; h--) {
+        for (int w = -w_arg/2; w < -w_arg/2+w_arg; w++) {
+            int dx = get_view_dx_tbl[d][h][w+50];
+            int dy = get_view_dy_tbl[d][h][w+50];
+            *p_arg++ = pixels[y+dy][x+dx];
         }
     }
 }

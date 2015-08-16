@@ -10,9 +10,11 @@ class world {
 public:
     static const int WORLD_WIDTH = 4096;
     static const int WORLD_HEIGHT = 4096;
-
+    
     world(display &display, string filename);
     ~world();
+
+    static void static_init();
 
     void place_car_init();
     void place_car(double x, double y, double dir);
@@ -44,8 +46,12 @@ private:
     // car pixels
     static const int CAR_WIDTH = 17;
     static const int CAR_HEIGHT = 17;
-    unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
-    void init_car_pixels();
+    static unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
+
+    // get view 
+    // XXX update constants here
+    static short get_view_dx_tbl[360][100][100];
+    static short get_view_dy_tbl[360][100][100];
 
     // edit static pixels support
     void set_static_pixel(double x, double y, unsigned char c);

@@ -68,6 +68,9 @@ int main(int argc, char **argv)
     // create the display
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
+    // xxx
+    world::static_init();
+
     // create the world
     world w(d,world_filename);
     message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
@@ -81,6 +84,7 @@ int main(int argc, char **argv)
 #else
     car[max_car++] = new CAR(d,w,2048,2048,0,0);
 #endif
+    //car[max_car++] = new CAR(d,w,2048,2048,20, 10);
 
     //
     // MAIN LOOP
@@ -107,6 +111,8 @@ int main(int argc, char **argv)
         // update all car controls: steering and speed
         if (mode == RUN) {            
             for (int i = 0; i < max_car; i++) {
+// XXX put the get view call in car.cpp here instead of in update_mechanics
+// XXX multi thread this
                 car[i]->update_controls(DELAY_MICROSECS);
             }
         }
@@ -123,7 +129,7 @@ int main(int argc, char **argv)
         w.draw(0,center_x,center_y,zoom);
 
         // draw car state
-        car[0]->draw(1,2);
+        car[1]->draw(1,2);
 
         // draw the message box
         if (message_age < MAX_MESSAGE_AGE) {

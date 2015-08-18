@@ -17,6 +17,7 @@ public:
     double get_speed() { return speed; }
     double get_speed_ctl() { return speed_ctl; }
     double get_steer_ctl() { return steer_ctl; }
+    world &get_world() { return w; }
 
     void draw(int front_view_pid, int dashboard_pid);
 
@@ -24,9 +25,7 @@ public:
     void set_steer_ctl(double val);
 
     void update_mechanics(double microsecs);
-
     virtual void update_controls(double microsecs) = 0;
-
 private:
     // display
     display &d;
@@ -42,7 +41,6 @@ private:
     double speed;
     double speed_ctl;
     double steer_ctl;
-    unsigned char front_view[100][100]; // XXX
 };
 
 #endif

@@ -180,6 +180,97 @@ void display::start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int 
     max_eid = 0;
 }
 
+void display::start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1,
+                    int x2, int y2, int w2, int h2)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    pane[0].x = x0;
+    pane[0].y = y0;
+    pane[0].w = w0;
+    pane[0].h = h0;
+
+    pane[1].x = x1;
+    pane[1].y = y1;
+    pane[1].w = w1;
+    pane[1].h = h1;
+
+    pane[2].x = x2;
+    pane[2].y = y2;
+    pane[2].w = w2;
+    pane[2].h = h2;
+
+    max_pane = 3;
+    max_eid = 0;
+}
+
+void display::start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1,
+                    int x2, int y2, int w2, int h2, int x3, int y3, int w3, int h3)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    pane[0].x = x0;
+    pane[0].y = y0;
+    pane[0].w = w0;
+    pane[0].h = h0;
+
+    pane[1].x = x1;
+    pane[1].y = y1;
+    pane[1].w = w1;
+    pane[1].h = h1;
+
+    pane[2].x = x2;
+    pane[2].y = y2;
+    pane[2].w = w2;
+    pane[2].h = h2;
+
+    pane[3].x = x3;
+    pane[3].y = y3;
+    pane[3].w = w3;
+    pane[3].h = h3;
+
+    max_pane = 4;
+    max_eid = 0;
+}
+
+void display::start(int x0, int y0, int w0, int h0, int x1, int y1, int w1, int h1,
+                    int x2, int y2, int w2, int h2, int x3, int y3, int w3, int h3,
+                    int x4, int y4, int w4, int h4)
+{
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_RenderClear(renderer);
+
+    pane[0].x = x0;
+    pane[0].y = y0;
+    pane[0].w = w0;
+    pane[0].h = h0;
+
+    pane[1].x = x1;
+    pane[1].y = y1;
+    pane[1].w = w1;
+    pane[1].h = h1;
+
+    pane[2].x = x2;
+    pane[2].y = y2;
+    pane[2].w = w2;
+    pane[2].h = h2;
+
+    pane[3].x = x3;
+    pane[3].y = y3;
+    pane[3].w = w3;
+    pane[3].h = h3;
+
+    pane[4].x = x4;
+    pane[4].y = y4;
+    pane[4].w = w4;
+    pane[4].h = h4;
+
+    max_pane = 5;
+    max_eid = 0;
+}
+
 void display::finish()
 {
     SDL_RenderPresent(renderer);

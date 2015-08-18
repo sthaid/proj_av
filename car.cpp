@@ -1,4 +1,3 @@
-// #include <cassert>    // XXX common header file ?
 #include <math.h>
 #include <memory.h>
 
@@ -12,6 +11,7 @@ display::texture *car::texture;
 
 void car::static_init(display &d)
 {
+    // xxx should be destroyed 
     texture = d.texture_create(100, 100);
 }
 
@@ -26,28 +26,25 @@ car::car(display &display, world &world, double x_arg, double y_arg, double dir_
     speed     = speed_arg;
     speed_ctl = 0;
     steer_ctl = 0;
-    memset(front_view, display::BLUE, sizeof(front_view));
 }
 
 car::~car()
 {
-    // XXX destroy the last
-    // XXX d.texture_destroy(texture);
 }
 
 // -----------------  DRAW CAR STATE  -----------------------------------------------
 
 void car::draw(int front_view_pid, int dashboard_pid)
 {
-    //if (texture == NULL) {
-        //texture = d.texture_create(100, 100);
-        //INFO("XXXXXXXXXXXXXX texture " << texture << endl);
-        //assert(texture);
-        //// XXX need a way to undo this 
-    //}
+    unsigned char front_view[100*100];
+
+    w.get_view(x, y, dir, 100, 100, reinterpret_cast<unsigned char *>(front_view));
 
     d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
     d.texture_draw(texture, 0, 0, 100, 100, front_view_pid);
+
+    d.text_draw("dashboard line 1", 0, 0, dashboard_pid);
+    d.text_draw("dashboard line 2", 1, 0, dashboard_pid);
 }
 
 // -----------------  UPDATE CAR CONTROLS  ------------------------------------------
@@ -100,8 +97,5 @@ void car::update_mechanics(double microsecs)
     } else if (speed > MAX_SPEED) {
         speed = MAX_SPEED;
     }
-
-    // set front_view
-    w.get_view(x, y, dir, 100, 100, reinterpret_cast<unsigned char *>(front_view));
 }
 

@@ -13,6 +13,8 @@
 #include "logging.h"
 #include "utils.h"
 
+// XXX make this similar to av.cpp
+
 #define PANE_WORLD_WIDTH     800
 #define PANE_WORLD_HEIGHT    800
 #define PANE_CTRL_WIDTH      600
@@ -73,6 +75,7 @@ int main(int argc, char **argv)
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
     // create the world
+    world::static_init();
     world w(d,world_filename);
     message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
     message_age = 0;

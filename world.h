@@ -10,6 +10,7 @@ class world {
 public:
     static const int WORLD_WIDTH = 4096;
     static const int WORLD_HEIGHT = 4096;
+    static const int MAX_GET_VIEW_XY = 1000;
     
     world(display &display, string filename);
     ~world();
@@ -50,8 +51,8 @@ private:
 
     // get view 
     // XXX update constants here
-    static short get_view_dx_tbl[360][100][100];
-    static short get_view_dy_tbl[360][100][100];
+    static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
+    static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 
     // edit static pixels support
     void set_static_pixel(double x, double y, unsigned char c);

@@ -14,8 +14,8 @@ using std::ios;
 // -----------------  WORLD CLASS STATIC INITIALIZATION  ----------------------------
 
 unsigned char world::car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
-short world::get_view_dx_tbl[360][100][100];
-short world::get_view_dy_tbl[360][100][100];
+short world::get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
+short world::get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];  // xxx make these tables bigger
 
 void world::static_init(void)
 {
@@ -72,19 +72,18 @@ void world::static_init(void)
 
     //
     // init get_view rotation tables
-    // XXX print size of the tables
-    // XXX increase size of tables
-    // XXX have referencers of these tables check the size
     // 
 
     int d1,h1,w1;
+    INFO("sizeof of tables " << 
+           (sizeof(get_view_dx_tbl) + sizeof(get_view_dy_tbl)) / 0x100000 << " MB" << endl);
     for (d1 = 0; d1 < 360; d1++) {
         double sindir = sin(d1 * (M_PI/180.0));
         double cosdir = cos(d1 * (M_PI/180.0));
-        for (h1 = 0; h1 < 100; h1++) {
-            for (w1 = -50; w1 < 50; w1++) {
-                get_view_dx_tbl[d1][h1][w1+50] = w1 * cosdir + h1 * sindir;
-                get_view_dy_tbl[d1][h1][w1+50] = w1 * sindir - h1 * cosdir;
+        for (h1 = 0; h1 < MAX_GET_VIEW_XY; h1++) {
+            for (w1 = -MAX_GET_VIEW_XY/2; w1 < -MAX_GET_VIEW_XY/2 + MAX_GET_VIEW_XY; w1++) {
+                get_view_dx_tbl[d1][h1][w1+(MAX_GET_VIEW_XY/2)] = w1 * cosdir + h1 * sindir;
+                get_view_dy_tbl[d1][h1][w1+(MAX_GET_VIEW_XY/2)] = w1 * sindir - h1 * cosdir;
             }
         }
     }
@@ -193,10 +192,12 @@ void world::get_view(double x_arg, double y_arg, double dir_arg, int w_arg, int 
 
     assert(d >= 0 && d <= 359);
 
+    // XXX check size and bounds
+
     for (int h = h_arg-1; h >= 0; h--) {
         for (int w = -w_arg/2; w < -w_arg/2+w_arg; w++) {
-            int dx = get_view_dx_tbl[d][h][w+50];
-            int dy = get_view_dy_tbl[d][h][w+50];
+            int dx = get_view_dx_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
+            int dy = get_view_dy_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
             *p_arg++ = pixels[y+dy][x+dx];
         }
     }

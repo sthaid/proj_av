@@ -15,11 +15,11 @@ fixed_control_car::~fixed_control_car()
 
 void fixed_control_car::update_controls(double microsecs)
 {
-    unsigned char front_view[100*100];
+    unsigned char front_view[200*200];
     world &w = get_world();
 
     // get front_view
-    w.get_view(get_x(), get_y(), get_dir(), 100, 100, reinterpret_cast<unsigned char *>(front_view));
+    w.get_view(get_x(), get_y(), get_dir(), 200, 200, reinterpret_cast<unsigned char *>(front_view));
 
     //set_steer_ctl(get_dir() < 90 ? 10 : 0);
     //set_speed_ctl(get_speed() < 20 ? 10 : 0);

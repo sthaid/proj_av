@@ -1,3 +1,4 @@
+#include <cassert>
 #include <math.h>
 #include <memory.h>
 
@@ -12,7 +13,8 @@ display::texture *car::texture;
 void car::static_init(display &d)
 {
     // xxx should be destroyed 
-    texture = d.texture_create(100, 100);
+    texture = d.texture_create(MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY);
+    assert(texture);
 }
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
@@ -36,12 +38,12 @@ car::~car()
 
 void car::draw(int front_view_pid, int dashboard_pid)
 {
-    unsigned char front_view[100*100];
+    unsigned char front_view[MAX_FRONT_VIEW_XY*MAX_FRONT_VIEW_XY];
 
-    w.get_view(x, y, dir, 100, 100, reinterpret_cast<unsigned char *>(front_view));
+    w.get_view(x, y, dir, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view);
 
-    d.texture_set_rect(texture, 0, 0, 100, 100, reinterpret_cast<unsigned char *>(front_view), 100);
-    d.texture_draw(texture, 0, 0, 100, 100, front_view_pid);
+    d.texture_set_rect(texture, 0, 0, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view, MAX_FRONT_VIEW_XY);
+    d.texture_draw(texture, 0, 0, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view_pid);
 
     d.text_draw("dashboard line 1", 0, 0, dashboard_pid);
     d.text_draw("dashboard line 2", 1, 0, dashboard_pid);

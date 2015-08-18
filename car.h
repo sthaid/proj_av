@@ -27,12 +27,11 @@ public:
     void update_mechanics(double microsecs);
     virtual void update_controls(double microsecs) = 0;
 private:
-    // display
+    // support front_view display
     display &d;
-    static display::texture *texture;
-
-    // world
     world &w;
+    static const int MAX_FRONT_VIEW_XY = 300;
+    static display::texture *texture;
 
     // car state
     double x;

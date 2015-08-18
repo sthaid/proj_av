@@ -16,7 +16,7 @@ using std::atomic;
 using std::mutex;
 using std::condition_variable;
 
-// display and pane size  XXX panes for car display   1,2
+// display and pane size 
 #define DISPLAY_WIDTH               1420
 #define DISPLAY_HEIGHT              800
 
@@ -119,6 +119,7 @@ int main(int argc, char **argv)
     car::static_init(d);
 
     // create the world
+    // XXX should have routine for putting message
     world w(d,world_filename);
     message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
     message_age = 0;

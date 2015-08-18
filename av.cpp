@@ -60,7 +60,7 @@ double       zoom = 1.0; //XXX  / ZOOM_FACTOR;
 
 // pane message box 
 const int MAX_MESSAGE_AGE = 200;
-const int DELAY_MICROSECS = 10000;
+const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
 string    message = "";
 int       message_age = MAX_MESSAGE_AGE;
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 
     // create cars
     for (double dir = 0; dir < 360; dir += 1) {
-        car[max_car++] = new CAR(d,w,2048,2048,dir, 10);
+        car[max_car++] = new CAR(d,w,2048,2048,dir, 30);
     }
 
     // create threads to update car controls
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
         // update all car mechanics: position, direction, speed
         if (mode == RUN) {            
             for (int i = 0; i < max_car; i++) {
-                car[i]->update_mechanics(DELAY_MICROSECS);
+                car[i]->update_mechanics(TARGET_CYCLE_TIME_US);
             }
         }
 
@@ -243,7 +243,7 @@ int main(int argc, char **argv)
         // DELAY
         // 
 
-        microsec_sleep(DELAY_MICROSECS);
+        microsec_sleep(19000);  // XXX
 
         // determine average cycle time
         // XXX make this a routine
@@ -296,7 +296,7 @@ void car_update_controls_thread(int id)
 
         // update car controls
         while ((idx = car_update_controls_idx.fetch_add(1)) < max_car) {
-            car[idx]->update_controls(DELAY_MICROSECS);
+            car[idx]->update_controls(TARGET_CYCLE_TIME_US);
             car_update_controls_completed++;
         }
 

@@ -1,3 +1,4 @@
+#include <sstream>
 #include <cassert>
 #include <math.h>
 #include <memory.h>
@@ -5,6 +6,8 @@
 #include "car.h"
 #include "logging.h"
 #include "utils.h"
+
+using std::ostringstream;
 
 // -----------------  CAR CLASS STATIC INITIALIZATION  ------------------------------
 
@@ -39,13 +42,13 @@ car::~car()
 void car::draw(int front_view_pid, int dashboard_pid)
 {
     unsigned char front_view[MAX_FRONT_VIEW_XY*MAX_FRONT_VIEW_XY];
-
     w.get_view(x, y, dir, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view);
-
     d.texture_set_rect(texture, 0, 0, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view, MAX_FRONT_VIEW_XY);
     d.texture_draw(texture, 0, 0, MAX_FRONT_VIEW_XY, MAX_FRONT_VIEW_XY, front_view_pid);
 
-    d.text_draw("dashboard line 1", 0, 0, dashboard_pid);
+    std::ostringstream s;
+    s << speed << " MPH";
+    d.text_draw(s.str(), 0, 0, dashboard_pid, false, 0, 0, true);
     d.text_draw("dashboard line 2", 1, 0, dashboard_pid);
 }
 

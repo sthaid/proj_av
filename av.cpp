@@ -8,6 +8,7 @@
 #include "display.h"
 #include "world.h"
 #include "fixed_control_car.h"
+#include "autonomous_car.h"
 #include "logging.h"
 #include "utils.h"
 
@@ -45,7 +46,7 @@ using std::condition_variable;
 #define PANE_PGM_CTL_HEIGHT         250
 
 #define PANE_MSG_BOX_ID             4
-#define PANE_MSG_BOX_X              820    // pane id 4
+#define PANE_MSG_BOX_X              820 
 #define PANE_MSG_BOX_Y              750
 #define PANE_MSG_BOX_WIDTH          600
 #define PANE_MSG_BOX_HEIGHT         50 
@@ -56,16 +57,18 @@ double       center_y = world::WORLD_HEIGHT / 2;
 const double ZOOM_FACTOR = 1.1892071;
 const double MAX_ZOOM    = 64.0 - .01;
 const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
-double       zoom = 1.0; //XXX  / ZOOM_FACTOR;
+double       zoom = 1.0;
+
+// simulation cycle time
+const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
 
 // pane message box 
 const int MAX_MESSAGE_AGE = 200;
-const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
 string    message = "";
 int       message_age = MAX_MESSAGE_AGE;
 
 // cars
-typedef class fixed_control_car CAR;
+typedef class autonomous_car CAR;
 const int     MAX_CAR = 1000;
 CAR         * car[MAX_CAR];
 int           max_car = 0;
@@ -79,7 +82,7 @@ condition_variable car_update_controls_cv1;
 mutex              car_update_controls_cv1_mtx;
 condition_variable car_update_controls_cv2;
 mutex              car_update_controls_cv2_mtx;
-thread             car_update_control_thread_id[MAX_CAR_UPDATE_CONTROLS_THREAD];
+thread             car_update_controls_thread_id[MAX_CAR_UPDATE_CONTROLS_THREAD];
 void car_update_controls_thread(int id);
 
 // -----------------  MAIN  ------------------------------------------------------------------------
@@ -91,6 +94,7 @@ int main(int argc, char **argv)
     string     world_filename = "world.dat";
     enum mode  mode = PAUSE;
     bool       done = false;
+    long       start_time_us, end_time_us, delay_us;
 
     //
     // INITIALIZATION
@@ -125,13 +129,17 @@ int main(int argc, char **argv)
     message_age = 0;
 
     // create cars
+#if 0
     for (double dir = 0; dir < 360; dir += 1) {
         car[max_car++] = new CAR(d,w,2048,2048,dir, 30);
     }
+#else
+    car[max_car++] = new CAR(d,w,2054,2048,0,0);
+#endif
 
     // create threads to update car controls
     for (int i = 0; i < MAX_CAR_UPDATE_CONTROLS_THREAD; i++) {
-        car_update_control_thread_id[i] = thread(car_update_controls_thread, i);
+        car_update_controls_thread_id[i] = thread(car_update_controls_thread, i);
     }
 
     //
@@ -139,6 +147,12 @@ int main(int argc, char **argv)
     //
 
     while (!done) {
+        //
+        // STORE THE START TIME
+        //
+
+        start_time_us = microsec_timer();
+
         //
         // CAR SIMULATION
         // 
@@ -240,13 +254,25 @@ int main(int argc, char **argv)
         } while(0);
 
         //
-        // DELAY
-        // 
+        // DELAY TO COMPLETE THE TARGET CYCLE TIME
+        //
 
-        microsec_sleep(19000);  // XXX
+        // delay to complete TARGET_CYCLE_TIME_US
+        end_time_us = microsec_timer();
+        delay_us = TARGET_CYCLE_TIME_US - (end_time_us - start_time_us);
+        microsec_sleep(delay_us);
 
+        // oncer per second, debug print this cycle's processing tie
+        static int count;
+        if (++count == 1000000 / TARGET_CYCLE_TIME_US) {
+            count = 0;
+            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
+        }
+
+#if 1
         // determine average cycle time
         // XXX make this a routine
+        // XXX or just delete
         {
             const int   MAX_TIMES=10;
             static long times[MAX_TIMES];
@@ -263,12 +289,16 @@ int main(int argc, char **argv)
                 INFO("AVG CYCLE TIME " << avg_cycle_time / 1000. << endl);
             }
         }
+#endif
     }
 
-    // terminate the car_update_control_threads
+    //
+    // TERMINATE CAR_UPDATE_CONTROLS_THREADS   
+    //
+
     car_update_controls_terminate = true;
     car_update_controls_cv1.notify_all();
-    for (auto& th : car_update_control_thread_id) {
+    for (auto& th : car_update_controls_thread_id) {
         th.join();
     }
 

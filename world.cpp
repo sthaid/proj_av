@@ -56,12 +56,12 @@ void world::static_init(void)
         unsigned char (&carprime)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[dir];
         int x,y,xprime,yprime;
 
-        #define OVSF 2  // Over Sample Factor
+        #define OVSF 3  // Over Sample Factor
         memset(carprime, display::TRANSPARENT, sizeof(car));
         for (y = 0; y < CAR_HEIGHT*OVSF; y++) {
             for (x = 0; x < CAR_WIDTH*OVSF; x++) {
-                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.0001;
-                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.0001;
+                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.001;
+                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.001;
                 if (xprime < 0 || xprime >= CAR_WIDTH*OVSF || yprime < 0 || yprime >= CAR_HEIGHT*OVSF) {
                     continue;
                 }
@@ -127,7 +127,6 @@ void world::place_car_init()
         struct rect &rect = placed_car_list[i];
 
         // restores pixels from static_pixels
-        // XXX check for y or x out of bouncds
         for (int y = rect.y; y < rect.y+rect.h; y++) {
             memcpy(&pixels[y][rect.x], &static_pixels[y][rect.x], CAR_WIDTH);
         }
@@ -153,6 +152,13 @@ void world::place_car(double x_arg, double y_arg, double dir_arg)
     int y  = (y_arg + 0.5);
     x -= CAR_WIDTH / 2;
     y -= CAR_HEIGHT / 2;
+
+    // if car is off an edge of the world then skip
+    if (x < 0 || x+CAR_WIDTH >= WORLD_WIDTH ||
+        y < 0 || y+CAR_HEIGHT >= WORLD_HEIGHT) 
+    {
+        return;
+    }
 
     // save the location of the car being placed on placed_car_list
     struct rect &rect = placed_car_list[max_placed_car_list];
@@ -188,17 +194,19 @@ void world::get_view(double x_arg, double y_arg, double dir_arg, int w_arg, int 
     int y = y_arg + 0.5;
     int d = dir_arg + 0.5;
 
-    if (d == 360) d = 0;  // XXX
+    if (d == 360) d = 0;  // xxx
 
     assert(d >= 0 && d <= 359);
-
-    // XXX check size and bounds
 
     for (int h = h_arg-1; h >= 0; h--) {
         for (int w = -w_arg/2; w < -w_arg/2+w_arg; w++) {
             int dx = get_view_dx_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
             int dy = get_view_dy_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
-            *p_arg++ = pixels[y+dy][x+dx];
+            if (y+dy >= 0 && y+dy < WORLD_HEIGHT && x+dx >= 0 && x+dx < WORLD_WIDTH) {
+                *p_arg++ = pixels[y+dy][x+dx];
+            } else {
+                *p_arg++ = display::PURPLE;
+            }
         }
     }
 }
@@ -221,14 +229,13 @@ void world::draw(int pid, double center_x, double center_y, double zoom)
 
 void world::create_road_slice(double &x, double &y, double dir)
 {
-    double dx, dy, dpx, dpy, tmpx, tmpy;
+    double dpx, dpy, tmpx, tmpy;
+    const double distance = 0.5;
 
     dir += 270;
 
-    dy  = .5 * sin(dir * (M_PI/180.0));
-    dx  = .5 * cos(dir * (M_PI/180.0));
-    dpy = .5 * sin((dir+90) * (M_PI/180.0));
-    dpx = .5 * cos((dir+90) * (M_PI/180.0));
+    dpy = distance * sin((dir+90) * (M_PI/180.0));
+    dpx = distance * cos((dir+90) * (M_PI/180.0));
 
     set_static_pixel(x,y,display::YELLOW);
 
@@ -251,9 +258,6 @@ void world::create_road_slice(double &x, double &y, double dir)
             set_static_pixel(tmpx,tmpy,display::BLACK);
         }
     }
-
-    x += dx;
-    y += dy;
 }
         
 void world::set_static_pixel(double x, double y, unsigned char p) 
@@ -266,6 +270,7 @@ void world::set_static_pixel(double x, double y, unsigned char p)
     }
 
     static_pixels[iy][ix] = p;
+    pixels[iy][ix] = p;
     d.texture_set_pixel(texture, ix, iy, p);
 }
 
@@ -285,6 +290,7 @@ unsigned char world::get_static_pixel(double x, double y)
 void world::clear()
 {
     memset(static_pixels, display::GREEN, WORLD_WIDTH*WORLD_HEIGHT); 
+    memcpy(pixels, static_pixels, WORLD_WIDTH*WORLD_HEIGHT);
     d.texture_destroy(texture);
     texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), 
                                              WORLD_WIDTH, WORLD_HEIGHT);

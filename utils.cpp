@@ -6,6 +6,9 @@
 
 void microsec_sleep(long us)
 {
+    if (us < 0) {
+        return;
+    }
     std::this_thread::sleep_for (std::chrono::microseconds(us));
 }
 

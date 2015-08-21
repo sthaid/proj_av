@@ -1,7 +1,7 @@
 #ifndef __DISPLAY_H__
 #define __DISPLAY_H__
 
-// XXX typedef for pixel_t
+// xxx typedef for pixel_t
 #include <string>  // xxx don't include stuff here ?
 
 using std::string;
@@ -59,7 +59,7 @@ public:
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
 
-    int text_draw(string str, int row, int col, int pid=0, bool evreg=false, int key_alias=0,
+    int text_draw(string str, double row, double col, int pid=0, bool evreg=false, int key_alias=0,
                   int fid=0, bool center=false, int field_cols=999);
 
     struct texture * texture_create(int w, int h);

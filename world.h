@@ -50,7 +50,6 @@ private:
     static unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
 
     // get view 
-    // XXX update constants here
     static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
     static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 

@@ -1,5 +1,4 @@
-// XXX 
-// - add edit pixels
+// XXX - add edit pixels
 
 #include <sstream>
 #include <unistd.h>

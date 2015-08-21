@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 
 #if 1
         // determine average cycle time
-        // XXX make this a routine, or just delete
+        // xxx make this a routine, or just delete
         {
             const int   MAX_TIMES=10;
             static long times[MAX_TIMES];

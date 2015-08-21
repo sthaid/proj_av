@@ -51,7 +51,6 @@ void car::draw(int front_view_pid, int dashboard_pid)
     // xxx should be able to get the pane w,h if desired from display.h
 
     // current speed
-    // XXX put text at exact pixel
     std::ostringstream s;
     s << speed;
     d.text_draw(s.str(), 0.7, 1, dashboard_pid);

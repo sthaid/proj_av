@@ -11,6 +11,13 @@ public:
 
     static void static_init(display &d);
 
+    const double MAX_STEER_CTL = 45;    // degrees
+    const double MIN_STEER_CTL = -45;   // degrees
+    const double MAX_SPEED_CTL = 10;    // mph/sec
+    const double MIN_SPEED_CTL = -30;   // mph/sec
+    const double MAX_SPEED     = 30;    // mph
+    const double CAR_LENGTH    = 10;    // ft
+
     double get_x() { return x; }
     double get_y() { return y; }
     double get_dir() { return dir; }

@@ -65,7 +65,7 @@ const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
 // pane message box 
 const int MAX_MESSAGE_AGE = 200;
 string    message = "";
-int       message_age = MAX_MESSAGE_AGE;
+int       message_age = MAX_MESSAGE_AGE;  // XXX should be time based, also in edw.cpp
 
 // cars
 typedef class autonomous_car CAR;

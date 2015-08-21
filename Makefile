@@ -30,6 +30,7 @@ clean:
 #
 
 av.o: av.cpp $(H_FILES)
+edw.o: edw.cpp $(H_FILES)
 display.o: display.cpp $(H_FILES)
 world.o: world.cpp $(H_FILES)
 car.o: car.cpp $(H_FILES)

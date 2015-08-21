@@ -60,12 +60,12 @@ const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
 double       zoom = 1.0;
 
 // simulation cycle time
-const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
+const int CYCLE_TIME_US = 50000;  // 50 ms
 
 // pane message box 
-const int MAX_MESSAGE_AGE = 200;
+const int MAX_MESSAGE_TIME_US = 1000000;
 string    message = "";
-int       message_age = MAX_MESSAGE_AGE;  // XXX should be time based, also in edw.cpp
+int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // cars
 typedef class autonomous_car CAR;
@@ -84,6 +84,13 @@ condition_variable car_update_controls_cv2;
 mutex              car_update_controls_cv2_mtx;
 thread             car_update_controls_thread_id[MAX_CAR_UPDATE_CONTROLS_THREAD];
 void car_update_controls_thread(int id);
+
+// display message utility
+inline void display_message(string msg)
+{
+    message = msg;
+    message_time_us = 0;
+}
 
 // -----------------  MAIN  ------------------------------------------------------------------------
 
@@ -123,10 +130,8 @@ int main(int argc, char **argv)
     car::static_init(d);
 
     // create the world
-    // XXX should have routine for putting message
     world w(d,world_filename);
-    message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
-    message_age = 0;
+    display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
 
     // create cars
 #if 0
@@ -160,7 +165,7 @@ int main(int argc, char **argv)
         // update all car mechanics: position, direction, speed
         if (mode == RUN) {            
             for (int i = 0; i < max_car; i++) {
-                car[i]->update_mechanics(TARGET_CYCLE_TIME_US);
+                car[i]->update_mechanics(CYCLE_TIME_US);
             }
         }
 
@@ -200,18 +205,17 @@ int main(int argc, char **argv)
         car[0]->draw(PANE_CAR_VIEW_ID, PANE_CAR_DASHBOARD_ID);
 
         // draw the message box
-        // XXX age should be seconds not cycles
-        if (message_age < MAX_MESSAGE_AGE) {
+        if (message_time_us < MAX_MESSAGE_TIME_US) {
             d.text_draw(message, 0, 0, PANE_MSG_BOX_ID);
-            message_age++;
+            message_time_us += CYCLE_TIME_US;
         }
 
         // draw and register events
         int eid_quit_win = d.event_register(display::ET_QUIT);
         int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run      = d.text_draw("RUN",   0, 0, PANE_PGM_CTL_ID, true, 'r');      
-        int eid_pause    = d.text_draw("PAUSE", 0, 7, PANE_PGM_CTL_ID, true, 's');      
+        int eid_run      = d.text_draw("RUN",   1, 0, PANE_PGM_CTL_ID, true, 'r');      
+        int eid_pause    = d.text_draw("PAUSE", 1, 7, PANE_PGM_CTL_ID, true, 's');      
 
         // finish, updates the display
         d.finish();
@@ -257,22 +261,21 @@ int main(int argc, char **argv)
         // DELAY TO COMPLETE THE TARGET CYCLE TIME
         //
 
-        // delay to complete TARGET_CYCLE_TIME_US
+        // delay to complete CYCLE_TIME_US
         end_time_us = microsec_timer();
-        delay_us = TARGET_CYCLE_TIME_US - (end_time_us - start_time_us);
+        delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
         // oncer per second, debug print this cycle's processing tie
         static int count;
-        if (++count == 1000000 / TARGET_CYCLE_TIME_US) {
+        if (++count == 1000000 / CYCLE_TIME_US) {
             count = 0;
             INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }
 
 #if 1
         // determine average cycle time
-        // XXX make this a routine
-        // XXX or just delete
+        // XXX make this a routine, or just delete
         {
             const int   MAX_TIMES=10;
             static long times[MAX_TIMES];
@@ -326,7 +329,7 @@ void car_update_controls_thread(int id)
 
         // update car controls
         while ((idx = car_update_controls_idx.fetch_add(1)) < max_car) {
-            car[idx]->update_controls(TARGET_CYCLE_TIME_US);
+            car[idx]->update_controls(CYCLE_TIME_US);
             car_update_controls_completed++;
         }
 

@@ -43,12 +43,12 @@ const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
 double       zoom = 1.0; 
 
 // simulation cycle time
-const int TARGET_CYCLE_TIME_US = 50000;  // 50 ms
+const int CYCLE_TIME_US = 50000;  // 50 ms
 
 // pane message box 
-const int MAX_MESSAGE_AGE = 200;
+const int MAX_MESSAGE_TIME_US = 1000000;   
 string    message = "";
-int       message_age = MAX_MESSAGE_AGE;
+int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // create roads mode
 const int INITIAL_CREATE_ROAD_X = 2048;
@@ -59,6 +59,13 @@ double    create_road_x = INITIAL_CREATE_ROAD_X;
 double    create_road_y = INITIAL_CREATE_ROAD_Y;
 double    create_road_dir = INITIAL_CREATE_ROAD_DIR;
 int       create_road_steering_idx = 5;
+
+// display message utility
+inline void display_message(string msg)
+{
+    message = msg;
+    message_time_us = 0;
+}
 
 // -----------------  MAIN  ------------------------------------------------------------------------
 
@@ -98,8 +105,7 @@ int main(int argc, char **argv)
     // create the world
     world::static_init();
     world w(d,world_filename);
-    message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
-    message_age = 0;
+    display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
 
     //
     // MAIN LOOP
@@ -155,7 +161,7 @@ int main(int argc, char **argv)
 
             s.str("");
             if (create_roads_run) {
-                int mph = distance / TARGET_CYCLE_TIME_US * (3600000000.0 / 5280.0);
+                int mph = distance / CYCLE_TIME_US * (3600000000.0 / 5280.0);
                 s << "RUNNING - " << mph << " MPH";
             } else {
                 s << "STOPPED";
@@ -170,9 +176,9 @@ int main(int argc, char **argv)
         }
 
         // draw the message box
-        if (message_age < MAX_MESSAGE_AGE) {
+        if (message_time_us < MAX_MESSAGE_TIME_US) {
             d.text_draw(message, 17, 0, PANE_MSG_BOX_ID);
-            message_age++;
+            message_time_us += CYCLE_TIME_US;
         }
 
         // draw and register events
@@ -237,14 +243,12 @@ int main(int argc, char **argv)
             }
             if (event.eid == eid_write) {
                 w.write();
-                message = w.write_ok() ? "WRITE SUCCESS" : "WRITE FAILURE";
-                message_age = 0;
+                display_message(w.write_ok() ? "WRITE SUCCESS" : "WRITE FAILURE");
                 break;
             }
             if (event.eid == eid_reset) {
                 w.read();
-                message = w.read_ok() ? "READ SUCCESS" : "READ FAILURE";
-                message_age = 0;
+                display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
                 break;
             }
             if (event.eid == eid_pan) {
@@ -320,14 +324,14 @@ int main(int argc, char **argv)
         // DELAY TO COMPLETE THE TARGET CYCLE TIME
         //
 
-        // delay to complete TARGET_CYCLE_TIME_US
+        // delay to complete CYCLE_TIME_US
         end_time_us = microsec_timer();
-        delay_us = TARGET_CYCLE_TIME_US - (end_time_us - start_time_us);
+        delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
         // oncer per second, debug print this cycle's processing tie
         static int count;
-        if (++count == 1000000 / TARGET_CYCLE_TIME_US) {
+        if (++count == 1000000 / CYCLE_TIME_US) {
             count = 0;
             INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }

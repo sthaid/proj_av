@@ -339,7 +339,7 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
 
 // -----------------  TEXT  ------------------------------------------------------------
 
-int display::text_draw(string str, int row, int col, int pid, bool evreg, int key_alias,
+int display::text_draw(string str, double row, double col, int pid, bool evreg, int key_alias,
                         int fid, bool center, int field_cols)
 {
     SDL_Surface    * surface = NULL;
@@ -507,7 +507,7 @@ void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, u
     SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, raw_pixels, 4*w);
 }
 
-#if 0  // XXX Not used
+#if 0  // xxx Not used
 void display::texture_clr_rect(struct texture * t, int x, int y, int w, int h)
 {
     static unsigned int transparent_pixels[20000];  // xxx

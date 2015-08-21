@@ -54,7 +54,7 @@ void car::draw(int front_view_pid, int dashboard_pid)
     // XXX put text at exact pixel
     std::ostringstream s;
     s << speed;
-    d.text_draw(s.str(), 0, 0, dashboard_pid);
+    d.text_draw(s.str(), 0.7, 1, dashboard_pid);
 
     // steering control
     int x;

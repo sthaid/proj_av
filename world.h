@@ -17,8 +17,8 @@ public:
 
     static void static_init();
 
-    void place_car_init();
-    void place_car(double x, double y, double dir);
+    void place_object_init();
+    void place_object(double x, double y, int w, int h, unsigned char * pixels);
 
     void get_view(double x, double y, double dir, int w, int h, unsigned char * pixels);
 
@@ -41,23 +41,16 @@ private:
     unsigned char (*static_pixels)[WORLD_WIDTH];
     unsigned char (*pixels)[WORLD_WIDTH];
     display::texture *texture;
-    struct rect placed_car_list[1000];
-    int max_placed_car_list;
-
-    // car pixels
-    static const int CAR_WIDTH = 17;
-    static const int CAR_HEIGHT = 17;
-    static unsigned char car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
+    struct rect placed_object_list[1000];
+    int max_placed_object_list;
 
     // get view 
     static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
     static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 
-    // edit static pixels support
+    // edit, and read/write static pixels support
     void set_static_pixel(double x, double y, unsigned char c);
     unsigned char get_static_pixel(double x, double y);
-
-    // read / write static_pixels
     string filename;
     bool read_ok_flag;
     bool write_ok_flag;

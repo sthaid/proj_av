@@ -13,67 +13,12 @@ using std::ios;
 
 // -----------------  WORLD CLASS STATIC INITIALIZATION  ----------------------------
 
-unsigned char world::car_pixels[360][CAR_HEIGHT][CAR_WIDTH];
 short world::get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 short world::get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];  // xxx make these tables bigger
 
 void world::static_init(void)
 {
-    //
-    // init car_pixels ...
-    //
-
-    // create car at 0 degree rotation
-    unsigned char (&car)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[0];
-    memset(car, display::TRANSPARENT, sizeof(car));
-    for (int h = 5; h <= 11; h++) {
-        for (int w = 1; w <= 15; w++) {
-            car[h][w] = display::BLUE;
-        }
-    }
-    car[5][15]  = display::WHITE;   // head lights
-    car[6][15]  = display::WHITE;
-    car[10][15] = display::WHITE;
-    car[11][15] = display::WHITE;
-    car[5][14]  = display::WHITE;
-    car[6][14]  = display::WHITE;
-    car[10][14] = display::WHITE;
-    car[11][14] = display::WHITE;
-    car[5][1]   = display::RED;     // tail lights
-    car[6][1]   = display::RED;
-    car[10][1]  = display::RED;
-    car[11][1]  = display::RED;
-    car[5][2]   = display::RED;
-    car[6][2]   = display::RED;
-    car[10][2]  = display::RED;
-    car[11][2]  = display::RED;
-
-    // create cars at 1 to 359 degrees rotation, 
-    // using the car created above at 0 degrees as a template
-    for (int dir = 1; dir <= 359; dir++) {
-        double sin_dir = sin(dir *  M_PI/180.0);
-        double cos_dir = cos(dir *  M_PI/180.0);
-        unsigned char (&carprime)[CAR_HEIGHT][CAR_WIDTH] = car_pixels[dir];
-        int x,y,xprime,yprime;
-
-        #define OVSF 3  // Over Sample Factor
-        memset(carprime, display::TRANSPARENT, sizeof(car));
-        for (y = 0; y < CAR_HEIGHT*OVSF; y++) {
-            for (x = 0; x < CAR_WIDTH*OVSF; x++) {
-                xprime = (x-CAR_WIDTH*OVSF/2) * cos_dir - (y-CAR_HEIGHT*OVSF/2) * sin_dir + CAR_WIDTH*OVSF/2 + 0.001;
-                yprime = (x-CAR_WIDTH*OVSF/2) * sin_dir + (y-CAR_HEIGHT*OVSF/2) * cos_dir + CAR_HEIGHT*OVSF/2 + 0.001;
-                if (xprime < 0 || xprime >= CAR_WIDTH*OVSF || yprime < 0 || yprime >= CAR_HEIGHT*OVSF) {
-                    continue;
-                }
-                carprime[yprime/OVSF][xprime/OVSF] = car[y/OVSF][x/OVSF];
-            }
-        }
-    }
-
-    //
     // init get_view rotation tables
-    // 
-
     int d1,h1,w1;
     INFO("sizeof of tables " << 
            (sizeof(get_view_dx_tbl) + sizeof(get_view_dy_tbl)) / 0x100000 << " MB" << endl);
@@ -98,8 +43,8 @@ world::world(display &display, string fn) : d(display)
     pixels                  = new unsigned char [WORLD_HEIGHT] [WORLD_WIDTH];
     memset(pixels, 0, WORLD_HEIGHT*WORLD_WIDTH);
     texture                 = NULL;
-    memset(placed_car_list, 0, sizeof(placed_car_list));
-    max_placed_car_list     = 0;
+    memset(placed_object_list, 0, sizeof(placed_object_list));
+    max_placed_object_list  = 0;
     filename                = "";
     read_ok_flag            = false;
     write_ok_flag           = false;
@@ -119,16 +64,16 @@ world::~world()
     delete [] pixels;
 }
 
-// -----------------  CAR SUPPORT  --------------------------------------------------
+// -----------------  OBJECT SUPPORT  -----------------------------------------------
 
-void world::place_car_init()
+void world::place_object_init()
 {
-    for (int i = 0; i < max_placed_car_list; i++) {
-        struct rect &rect = placed_car_list[i];
+    for (int i = 0; i < max_placed_object_list; i++) {
+        struct rect &rect = placed_object_list[i];
 
         // restores pixels from static_pixels
         for (int y = rect.y; y < rect.y+rect.h; y++) {
-            memcpy(&pixels[y][rect.x], &static_pixels[y][rect.x], CAR_WIDTH);
+            memcpy(&pixels[y][rect.x], &static_pixels[y][rect.x], rect.w);
         }
 
         // restores the texture
@@ -137,45 +82,40 @@ void world::place_car_init()
                            &pixels[rect.y][rect.x], 
                            WORLD_WIDTH);
     }
-    max_placed_car_list = 0;
+    max_placed_object_list = 0;
 }
 
-void world::place_car(double x_arg, double y_arg, double dir_arg)
+void world::place_object(double x_arg, double y_arg, int w_arg, int h_arg, unsigned char * pixels_arg)
 {
-    // convert dir to integer, and adjust so 0 degrees is up
-    int dir = (dir_arg + 0.5);
-    dir = ((dir + 270) % 360);
-    if (dir < 0) dir += 360;
-
-    // convert x,y to integer, and adjust to the top left corner of the car rect
+    // convert x,y to integer, and adjust to the top left corner of the object rect
+    // xxx this could be more accurate, but need to retest car display in 4 totations
     int x  = (x_arg + 0.5);
     int y  = (y_arg + 0.5);
-    x -= CAR_WIDTH / 2;
-    y -= CAR_HEIGHT / 2;
+    x -= w_arg / 2;
+    y -= h_arg / 2;
 
-    // if car is off an edge of the world then skip
-    if (x < 0 || x+CAR_WIDTH >= WORLD_WIDTH ||
-        y < 0 || y+CAR_HEIGHT >= WORLD_HEIGHT) 
+    // if object is off an edge of the world then skip
+    if (x < 0 || x+w_arg >= WORLD_WIDTH ||
+        y < 0 || y+h_arg >= WORLD_HEIGHT) 
     {
         return;
     }
 
-    // save the location of the car being placed on placed_car_list
-    struct rect &rect = placed_car_list[max_placed_car_list];
+    // save the location of the object being placed on placed_object_list
+    struct rect &rect = placed_object_list[max_placed_object_list];
     rect.x = x;
     rect.y = y;
-    rect.w = CAR_WIDTH;
-    rect.h = CAR_HEIGHT;
-    max_placed_car_list++;
+    rect.w = w_arg;
+    rect.h = h_arg;
+    max_placed_object_list++;
 
-    // copy non transparent car pixels to pixels
-    unsigned char * cp = reinterpret_cast<unsigned char *>(car_pixels[dir]);  //xxx cast
+    // copy non transparent object pixels to pixels
     for (y = rect.y; y < rect.y+rect.h; y++) {
         for (x = rect.x; x < rect.x+rect.w; x++) {
-            if (*cp != display::TRANSPARENT) {
-                pixels[y][x] = *cp;
+            if (*pixels_arg != display::TRANSPARENT) {
+                pixels[y][x] = *pixels_arg;
             }
-            cp++;
+            pixels_arg++;
         }
     }
 
@@ -225,7 +165,7 @@ void world::draw(int pid, double center_x, double center_y, double zoom)
     d.texture_draw(texture, x, y, w, h, pid);
 }
 
-// -----------------  EDIT STATIC PIXELS SUPPORT  -----------------------------------
+// -----------------  EDIT SUPPORT  -------------------------------------------------
 
 void world::create_road_slice(double &x, double &y, double dir)
 {

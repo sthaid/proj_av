@@ -1,7 +1,7 @@
-TARGETS = av edw
-H_FILES = display.h event_sound.h world.h car.h fixed_control_car.h autonomous_car.h logging.h utils.h
-AV_OBJS = av.o display.o world.o utils.o car.o fixed_control_car.o autonomous_car.o
-EDW_OBJS = edw.o display.o world.o utils.o
+TARGETS  = av edw
+H_FILES  = display.h event_sound.h world.h car.h fixed_control_car.h autonomous_car.h logging.h utils.h
+AV_OBJS  = av.o  display.o world.o utils.o car.o fixed_control_car.o autonomous_car.o
+EDW_OBJS = edw.o display.o world.o utils.o car.o fixed_control_car.o
 
 CC = g++
 CPPFLAGS = -std=gnu++11 -Wall -g -O2 $(shell sdl2-config --cflags) 

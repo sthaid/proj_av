@@ -7,7 +7,7 @@
 
 #include "display.h"
 #include "world.h"
-#include "car.h"
+#include "fixed_control_car.h"
 #include "logging.h"
 #include "utils.h"
 
@@ -101,8 +101,11 @@ int main(int argc, char **argv)
     // create the display
     display d(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
-    // create the world
+    // call static initialization routines for the world and car classes
     world::static_init();
+    car::static_init(d);
+
+    // create the world
     world w(d,world_filename);
     display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
 
@@ -127,13 +130,10 @@ int main(int argc, char **argv)
                 PANE_MSG_BOX_X, PANE_MSG_BOX_Y, PANE_MSG_BOX_WIDTH, PANE_MSG_BOX_HEIGHT);
 
         // draw world 
-        w.place_car_init();
-        // xxx test w.place_car(2000, 2020, 0);
-        // xxx test w.place_car(2000, 2040, 180);
-        // xxx test w.place_car(2020, 2040, 90);
-        // xxx test w.place_car(2040, 2040, 270);
+        w.place_object_init();
         if (mode == CREATE_ROADS) {
-            w.place_car(create_road_x, create_road_y, create_road_dir);
+            fixed_control_car car(d, w, create_road_x, create_road_y, create_road_dir, 0);
+            car.place_car_in_world();
         }
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 

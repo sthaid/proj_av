@@ -68,7 +68,7 @@ string    message = "";
 int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // cars
-typedef class autonomous_car CAR;
+typedef class fixed_control_car CAR;
 const int     MAX_CAR = 1000;
 CAR         * car[MAX_CAR];
 int           max_car = 0;
@@ -134,7 +134,7 @@ int main(int argc, char **argv)
     display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
 
     // create cars
-#if 0
+#if 1
     for (double dir = 0; dir < 360; dir += 1) {
         car[max_car++] = new CAR(d,w,2048,2048,dir, 30);
     }
@@ -170,9 +170,10 @@ int main(int argc, char **argv)
         }
 
         // update car positions in the world 
-        w.place_car_init();
+        w.place_object_init();
         for (int i = 0; i < max_car; i++) {
-            w.place_car(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
+            car[i]->place_car_in_world();
+            // xxx w.place_(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
         }
 
         // update all car controls: steering and speed
@@ -201,8 +202,8 @@ int main(int argc, char **argv)
         // draw world 
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 
-        // draw car state
-        car[0]->draw(PANE_CAR_VIEW_ID, PANE_CAR_DASHBOARD_ID);
+        // draw car front view and dashboard
+        car[0]->draw_front_view_and_dashboard(PANE_CAR_VIEW_ID, PANE_CAR_DASHBOARD_ID);
 
         // draw the message box
         if (message_time_us < MAX_MESSAGE_TIME_US) {

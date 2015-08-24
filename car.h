@@ -15,19 +15,21 @@ public:
     const double MIN_STEER_CTL = -45;   // degrees
     const double MAX_SPEED_CTL = 10;    // mph/sec
     const double MIN_SPEED_CTL = -30;   // mph/sec
-    const double MAX_SPEED     = 30;    // mph
-    const double CAR_LENGTH    = 10;    // ft
+    const double MAX_SPEED     = 50;    // mph
+    const double CAR_LENGTH    = 10;    // ft   xxx wheel base
 
+    world &get_world() { return w; }
     double get_x() { return x; }
     double get_y() { return y; }
     double get_dir() { return dir; }
     double get_speed() { return speed; }
     double get_speed_ctl() { return speed_ctl; }
     double get_steer_ctl() { return steer_ctl; }
-    world &get_world() { return w; }
+    bool get_failed() { return failed; };
 
     void set_speed_ctl(double val);
     void set_steer_ctl(double val);
+    void set_failed() { failed = true; }
     void update_mechanics(double microsecs);
     virtual void update_controls(double microsecs) = 0;
 
@@ -37,7 +39,8 @@ private:
     // support front_view display
     display &d;
     world &w;
-    static const int MAX_FRONT_VIEW_XY = 300;
+    static const int MAX_FRONT_VIEW_WIDTH = 101;
+    static const int MAX_FRONT_VIEW_HEIGHT = 300;
     static display::texture *texture;
 
     // car state
@@ -47,6 +50,7 @@ private:
     double speed;
     double speed_ctl;
     double steer_ctl;
+    bool   failed;
 
     // car pixels
     static const int CAR_PIXELS_HEIGHT = 17;

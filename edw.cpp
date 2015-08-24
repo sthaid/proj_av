@@ -243,6 +243,7 @@ int main(int argc, char **argv)
             if (event.eid == eid_write) {
                 w.write();
                 display_message(w.write_ok() ? "WRITE SUCCESS" : "WRITE FAILURE");
+// XXX message not displayed
                 break;
             }
             if (event.eid == eid_reset) {

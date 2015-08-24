@@ -68,7 +68,8 @@ string    message = "";
 int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // cars
-typedef class fixed_control_car CAR;
+//typedef class fixed_control_car CAR;
+typedef class autonomous_car CAR;   
 const int     MAX_CAR = 1000;
 CAR         * car[MAX_CAR];
 int           max_car = 0;
@@ -134,15 +135,16 @@ int main(int argc, char **argv)
     display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
 
     // create cars
-#if 1
+#if 0
     for (double dir = 0; dir < 360; dir += 1) {
         car[max_car++] = new CAR(d,w,2048,2048,dir, 30);
     }
 #else
-    car[max_car++] = new CAR(d,w,2054,2048,0,0);
+    car[max_car++] = new CAR(d,w,2054,2048,0,50);
 #endif
 
     // create threads to update car controls
+    car_update_controls_idx = max_car;
     for (int i = 0; i < MAX_CAR_UPDATE_CONTROLS_THREAD; i++) {
         car_update_controls_thread_id[i] = thread(car_update_controls_thread, i);
     }
@@ -221,6 +223,12 @@ int main(int argc, char **argv)
         // finish, updates the display
         d.finish();
 
+        // xxx
+        if (car[0]->get_failed() && mode != PAUSE) {
+            INFO(" *** PAUSIN ***\n");
+            mode = PAUSE;
+        }
+
         //
         // EVENT HADNLING 
         // 
@@ -271,10 +279,10 @@ int main(int argc, char **argv)
         static int count;
         if (++count == 1000000 / CYCLE_TIME_US) {
             count = 0;
-            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
+            // INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }
 
-#if 1
+#if 0
         // determine average cycle time
         // xxx make this a routine, or just delete
         {

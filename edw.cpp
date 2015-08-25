@@ -56,6 +56,7 @@ double    create_road_x = INITIAL_CREATE_ROAD_X;
 double    create_road_y = INITIAL_CREATE_ROAD_Y;
 double    create_road_dir = INITIAL_CREATE_ROAD_DIR;
 int       create_road_steering_idx = 5;
+void create_road_slice(class world &w, double x, double y, double dir);
 
 // edit pixels mode
 typedef struct {
@@ -154,17 +155,13 @@ int main(int argc, char **argv)
             const double distance = 0.5;
 
             if (create_roads_run) {
-                w.create_road_slice(create_road_x, create_road_y, create_road_dir);  
+                create_road_slice(w, create_road_x, create_road_y, create_road_dir);  
 
-                create_road_y += distance * sin((create_road_dir+270) * (M_PI/180.0));
-                create_road_x += distance * cos((create_road_dir+270) * (M_PI/180.0));
+                create_road_y -= distance * cos((create_road_dir) * (M_PI/180.0));
+                create_road_x += distance * sin((create_road_dir) * (M_PI/180.0));
 
-                create_road_dir += (create_road_steering_idx - 5) * 0.05;
-                if (create_road_dir < 0) {
-                    create_road_dir += 360;
-                } else if (create_road_dir > 360) {
-                    create_road_dir -= 360;
-                }
+                create_road_dir = sanitize_direction(create_road_dir + 
+                                                     0.05 * (create_road_steering_idx - 5));
             }
 
             d.text_draw("^", 1, 2*(create_road_steering_idx-1), 1);
@@ -354,16 +351,12 @@ int main(int argc, char **argv)
                 }
                 if (event.eid == eid_rol) {
                     create_road_dir = (int)(create_road_dir + 0.5) - 1;
-                    if (create_road_dir < 0) {
-                        create_road_dir += 360;
-                    }
+                    create_road_dir = sanitize_direction(create_road_dir);
                     break;
                 }
                 if (event.eid == eid_ror) {
                     create_road_dir = (int)(create_road_dir + 0.5) + 1;
-                    if (create_road_dir > 360) {
-                        create_road_dir -= 360;
-                    }
+                    create_road_dir = sanitize_direction(create_road_dir);
                     break;
                 }
             }
@@ -440,3 +433,35 @@ int main(int argc, char **argv)
     return 0;
 }
 
+// -----------------  CREATE ROAD SLICE  -----------------------------------------------------------
+
+void create_road_slice(class world &w, double x, double y, double dir)
+{
+    double dpx, dpy, tmpx, tmpy;
+    const double distance = 0.5;
+
+    dpy = -distance * cos((dir+90) * (M_PI/180.0));
+    dpx = distance * sin((dir+90) * (M_PI/180.0));
+
+    w.set_pixel(x,y,display::YELLOW);
+
+    tmpx = x;
+    tmpy = y;
+    for (int i = 1; i <= 24; i++) {
+        tmpx += dpx;
+        tmpy += dpy;
+        if (w.get_pixel(tmpx,tmpy) == display::GREEN) {
+            w.set_pixel(tmpx,tmpy,display::BLACK);
+        }
+    }
+
+    tmpx = x;
+    tmpy = y;
+    for (int i = 1; i <= 24; i++) {
+        tmpx -= dpx;
+        tmpy -= dpy;
+        if (w.get_pixel(tmpx,tmpy) == display::GREEN) {
+            w.set_pixel(tmpx,tmpy,display::BLACK);
+        }
+    }
+}

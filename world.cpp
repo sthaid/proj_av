@@ -184,8 +184,7 @@ void world::draw(int pid, int center_x, int center_y, double zoom)
 
 void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 {
-    int d = dir + 0.5;
-    if (d == 360) d = 0;  // xxx use a macro or util func
+    int d = sanitize_direction(dir + 0.5);
     assert(d >= 0 && d <= 359);
 
     for (int h = H-1; h >= 0; h--) {
@@ -203,40 +202,6 @@ void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 
 // -----------------  EDIT SUPPORT  -------------------------------------------------
 
-// XXX move this to edit pgm
-void world::create_road_slice(double x, double y, double dir)
-{
-    double dpx, dpy, tmpx, tmpy;
-    const double distance = 0.5;
-
-    dir += 270;
-
-    dpy = distance * sin((dir+90) * (M_PI/180.0));
-    dpx = distance * cos((dir+90) * (M_PI/180.0));
-
-    set_pixel(x,y,display::YELLOW);
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 24; i++) {
-        tmpx += dpx;
-        tmpy += dpy;
-        if (get_pixel(tmpx,tmpy) == display::GREEN) {
-            set_pixel(tmpx,tmpy,display::BLACK);
-        }
-    }
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 24; i++) {
-        tmpx -= dpx;
-        tmpy -= dpy;
-        if (get_pixel(tmpx,tmpy) == display::GREEN) {
-            set_pixel(tmpx,tmpy,display::BLACK);
-        }
-    }
-}
-        
 void world::set_pixel(int x, int y, unsigned char p) 
 {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {

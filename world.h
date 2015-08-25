@@ -26,7 +26,6 @@ public:
 
     void get_view(int x, int y, double dir, int w, int h, unsigned char * pixels);
 
-    void create_road_slice(double x, double y, double dir);
     void set_pixel(int x, int y, unsigned char c);
     unsigned char get_pixel(int x, int y);
 private:

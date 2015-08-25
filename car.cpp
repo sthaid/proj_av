@@ -145,12 +145,7 @@ void car::update_mechanics(double microsecs)
 
     // update car direction based upon steering control 
     delta_dir = atan(distance / CAR_LENGTH * sin(steer_ctl*(M_PI/180.))) * (180./M_PI);
-    dir += delta_dir;
-    if (dir < 0) {  // xxx look at everywhere 360 is used, make an inline util for this
-        dir += 360;
-    } else if (dir > 360) {
-        dir -= 360;
-    }
+    dir = sanitize_direction(dir + delta_dir);
     
     // update car speed based on speed control 
     speed += speed_ctl * (microsecs / 1000000.);
@@ -228,8 +223,8 @@ void car::draw_front_view_and_dashboard(int front_view_pid, int dashboard_pid)
 
 void car::place_car_in_world()
 {
-    int direction = dir + 0.5;
-    if (direction >= 360) direction -= 360;
+    int direction = sanitize_direction(dir + 0.5);
+    assert(direction >= 0 && direction < 360);
 
     w.place_object(x, y, CAR_PIXELS_WIDTH, CAR_PIXELS_HEIGHT,
                    reinterpret_cast<unsigned char *>(car_pixels[direction]));

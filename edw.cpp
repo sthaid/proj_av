@@ -1,5 +1,3 @@
-// XXX - add edit pixels
-
 #include <sstream>
 #include <unistd.h>
 #include <string.h>
@@ -197,7 +195,6 @@ int main(int argc, char **argv)
                 d.draw_filled_rect(p.x, p.y, p.w, p.h, PANE_CTRL_ID);
             }
 
-            // xxx d.text_draw("SELECTION", 5, 0, PANE_CTRL_ID_;
             d.draw_set_color(edit_pixels_color_selection);
             d.draw_filled_rect(150, 300, 300, 75, PANE_CTRL_ID);
             d.draw_set_color(display::WHITE);
@@ -214,13 +211,14 @@ int main(int argc, char **argv)
         int eid_clear=-1, eid_write=-1, eid_reset=-1, eid_quit=-1, eid_quit_win=-1, eid_pan=-1, eid_zoom=-1;
         int eid_create_roads=-1, eid_edit_pixels=-1;
 
-        int eid_1=-1, eid_9=-1, eid_run=-1, eid_stop=-1, eid_back=-1, eid_rol=-1, eid_ror=-1, eid_click=-1;
+        int eid_1=-1, eid_9=-1, eid_run=-1, eid_stop=-1, eid_back=-1, eid_rol=-1, eid_ror=-1, eid_cr_click=-1;
         __attribute__((unused)) int eid_2=-1, eid_3=-1, eid_4=-1, eid_5=-1, eid_6=-1, eid_7=-1, eid_8=-1;
 
         int eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT];
         for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
             eid_color_select[i] = -1;
         }
+        int eid_ep_click=-1;
 
         eid_write    = d.text_draw("WRITE",        13,  0, PANE_CTRL_ID, true);      
         eid_quit     = d.text_draw("QUIT",         13,  8, PANE_CTRL_ID, true);     
@@ -235,25 +233,25 @@ int main(int argc, char **argv)
             eid_edit_pixels  = d.text_draw("EDIT_PIXELS",   1, 0, PANE_CTRL_ID, true);  // r,c,pid,event
             break;
         case CREATE_ROADS:
-            eid_1     = d.text_draw("1",             0, 0, PANE_CTRL_ID, true, '1');
-            eid_2     = d.text_draw("2",             0, 2, PANE_CTRL_ID, true, '2');      
-            eid_3     = d.text_draw("3",             0, 4, PANE_CTRL_ID, true, '3');      
-            eid_4     = d.text_draw("4",             0, 6, PANE_CTRL_ID, true, '4');      
-            eid_5     = d.text_draw("5",             0, 8, PANE_CTRL_ID, true, '5');      
-            eid_6     = d.text_draw("6",             0,10, PANE_CTRL_ID, true, '6');      
-            eid_7     = d.text_draw("7",             0,12, PANE_CTRL_ID, true, '7');      
-            eid_8     = d.text_draw("8",             0,14, PANE_CTRL_ID, true, '8');  
-            eid_9     = d.text_draw("9",             0,16, PANE_CTRL_ID, true, '9');      
-            eid_rol   = d.text_draw("ROL",           3, 0, PANE_CTRL_ID, true, display::KEY_LEFT);
-            eid_ror   = d.text_draw("ROR",           3, 8, PANE_CTRL_ID, true, display::KEY_RIGHT);
-            eid_run   = d.text_draw("RUN",           5, 0, PANE_CTRL_ID, true, 'r');      
-            eid_stop  = d.text_draw("STOP",          5, 8, PANE_CTRL_ID, true, 's');      
-            eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
-            eid_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
+            eid_1        = d.text_draw("1",             0, 0, PANE_CTRL_ID, true, '1');
+            eid_2        = d.text_draw("2",             0, 2, PANE_CTRL_ID, true, '2');      
+            eid_3        = d.text_draw("3",             0, 4, PANE_CTRL_ID, true, '3');      
+            eid_4        = d.text_draw("4",             0, 6, PANE_CTRL_ID, true, '4');      
+            eid_5        = d.text_draw("5",             0, 8, PANE_CTRL_ID, true, '5');      
+            eid_6        = d.text_draw("6",             0,10, PANE_CTRL_ID, true, '6');      
+            eid_7        = d.text_draw("7",             0,12, PANE_CTRL_ID, true, '7');      
+            eid_8        = d.text_draw("8",             0,14, PANE_CTRL_ID, true, '8');  
+            eid_9        = d.text_draw("9",             0,16, PANE_CTRL_ID, true, '9');      
+            eid_rol      = d.text_draw("ROL",           3, 0, PANE_CTRL_ID, true, display::KEY_LEFT);
+            eid_ror      = d.text_draw("ROR",           3, 8, PANE_CTRL_ID, true, display::KEY_RIGHT);
+            eid_run      = d.text_draw("RUN",           5, 0, PANE_CTRL_ID, true, 'r');      
+            eid_stop     = d.text_draw("STOP",          5, 8, PANE_CTRL_ID, true, 's');      
+            eid_back     = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
+            eid_cr_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
             break;
         case EDIT_PIXELS:
             eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
-            eid_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);  // XXX name
+            eid_ep_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
             for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
                 edit_pixels_color_select_t &p = edit_pixels_color_select_tbl[i];
                 eid_color_select[i] = d.event_register(display::ET_MOUSE_LEFT_CLICK, PANE_CTRL_ID, p.x, p.y, p.w, p.h);
@@ -342,8 +340,8 @@ int main(int argc, char **argv)
                     create_road_steering_idx = event.eid - eid_1 + 1;
                     break;
                 }
-                if (event.eid == eid_click) {
-// xxx make this a function
+                if (event.eid == eid_cr_click) {
+                    // XXX make this a function
                     double world_display_width = world::WORLD_WIDTH / zoom;
                     double world_display_height = world::WORLD_HEIGHT / zoom;
                     create_roads_run = false;
@@ -352,8 +350,6 @@ int main(int argc, char **argv)
                     create_road_y = (center_y - world_display_height / 2) + 
                                     (world_display_height / PANE_WORLD_HEIGHT * event.val2);
                     create_road_dir = 0;
-                    // xxx INFO("MOUSE " << event.val1 << " " << event.val2 << endl);
-                    // xxx INFO("XY = " << create_road_x << " " << create_road_y << endl);
                     break;
                 }
                 if (event.eid == eid_rol) {
@@ -379,38 +375,21 @@ int main(int argc, char **argv)
                     mode = MAIN;
                     break;
                 }
-                if (event.eid == eid_click) {
+                if (event.eid == eid_ep_click) {
+                    // XXX make this a function
+                    // XXX redo using code from wolrd
                     int  world_display_width = world::WORLD_WIDTH / zoom;
                     int  world_display_height = world::WORLD_HEIGHT / zoom;
                     int  world_x, world_y;
 
-INFO("CENTER_X " << center_x << " W/2 "<< world_display_width / 2 << " CALC " << (center_x - world_display_width / 2) << endl);
+                    INFO("CENTER_X " << center_x << " W/2 "<< world_display_width / 2 << " CALC " << (center_x - world_display_width / 2) << endl);
                     world_x = ((int)center_x - world_display_width / 2) + 
                               ((double)world_display_width / PANE_WORLD_WIDTH * event.val1);
-INFO("CENTER_Y " << center_y << " H/2 "<< world_display_height / 2 << " CALC " << (center_y - world_display_height / 2) << endl);
+                    INFO("CENTER_Y " << center_y << " H/2 "<< world_display_height / 2 << " CALC " << (center_y - world_display_height / 2) << endl);
                     world_y = ((int)center_y - world_display_height / 2)  + 
                               ((double)world_display_height / PANE_WORLD_HEIGHT * event.val2);
 
-#if 0
-                    // xxx this is pretty good
-                    world_x = (int)(center_x - world_display_width / 2) + 
-                              (world_display_width / PANE_WORLD_WIDTH * event.val1);
-                    world_y = (int)(center_y - world_display_height / 2)  + 
-                              (world_display_height / PANE_WORLD_HEIGHT * event.val2);
-#endif
-#if 0
-                    world_x = (center_x - world_display_width / 2) + 
-                              (world_display_width / PANE_WORLD_WIDTH * event.val1);
-                    world_y = (center_y - world_display_height / 2) + 
-                              (world_display_height / PANE_WORLD_HEIGHT * event.val2);
-#endif
-                    INFO("XXX " << world_x << " " << world_y << endl);
-
-// XXX need undo
                     w.set_pixel(world_x, world_y, edit_pixels_color_selection);
-                    //AAA
-                    // xxx INFO("MOUSE " << event.val1 << " " << event.val2 << endl);
-                    // xxx INFO("XY = " << create_road_x << " " << create_road_y << endl);
                     break;
                 }
                 if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {

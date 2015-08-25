@@ -369,20 +369,11 @@ int main(int argc, char **argv)
                     break;
                 }
                 if (event.eid == eid_ep_click) {
-                    // XXX make this a function
-                    // XXX redo using code from wolrd
-                    int  world_display_width = world::WORLD_WIDTH / zoom;
-                    int  world_display_height = world::WORLD_HEIGHT / zoom;
-                    int  world_x, world_y;
-
-                    INFO("CENTER_X " << center_x << " W/2 "<< world_display_width / 2 << " CALC " << (center_x - world_display_width / 2) << endl);
-                    world_x = ((int)center_x - world_display_width / 2) + 
-                              ((double)world_display_width / PANE_WORLD_WIDTH * event.val1);
-                    INFO("CENTER_Y " << center_y << " H/2 "<< world_display_height / 2 << " CALC " << (center_y - world_display_height / 2) << endl);
-                    world_y = ((int)center_y - world_display_height / 2)  + 
-                              ((double)world_display_height / PANE_WORLD_HEIGHT * event.val2);
-
-                    w.set_pixel(world_x, world_y, edit_pixels_color_selection);
+                    int x,y;
+                    w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH, 
+                                               (double)event.val2/PANE_WORLD_HEIGHT, 
+                                               x, y);
+                    w.set_pixel(x, y, edit_pixels_color_selection);
                     break;
                 }
                 if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {

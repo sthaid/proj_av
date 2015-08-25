@@ -45,6 +45,9 @@ world::world(display &display) : d(display)
     texture                 = NULL;
     memset(placed_object_list, 0, sizeof(placed_object_list));
     max_placed_object_list  = 0;
+    center_x                = 0;
+    center_y                = 0;
+    zoom                    = 0;
 
     clear();
 }
@@ -168,16 +171,20 @@ void world::place_object(int x, int y, int w, int h, unsigned char * p)
                        WORLD_WIDTH);
 }
 
-void world::draw(int pid, int center_x, int center_y, double zoom)
+void world::draw(int pid, int center_x_arg, int center_y_arg, double zoom_arg)
 {
     int w, h, x, y;
 
-    w = WORLD_WIDTH / zoom;
-    h = WORLD_HEIGHT / zoom;
-    x = center_x - w/2;
-    y = center_y - h/2;
+    w = WORLD_WIDTH / zoom_arg;
+    h = WORLD_HEIGHT / zoom_arg;
+    x = center_x_arg - w/2;
+    y = center_y_arg - h/2;
 
     d.texture_draw(texture, x, y, w, h, pid);
+
+    center_x = center_x_arg;
+    center_y = center_y_arg;
+    zoom     = zoom_arg;
 }
 
 // -----------------  GET VIEW OF THE WORLD  ----------------------------------------
@@ -222,3 +229,12 @@ unsigned char world::get_pixel(int x, int y)
     return static_pixels[y][x];
 }
 
+void world::cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y)
+{
+    assert(zoom != 0);
+    int  world_display_width  = WORLD_WIDTH / zoom;
+    int  world_display_height = WORLD_HEIGHT / zoom;
+
+    world_x = (center_x - world_display_width / 2) + (world_display_width * pixel_x);
+    world_y = (center_y - world_display_height / 2) + (world_display_height * pixel_y);
+}

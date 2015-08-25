@@ -28,6 +28,7 @@ public:
 
     void set_pixel(int x, int y, unsigned char c);
     unsigned char get_pixel(int x, int y);
+    void cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y);
 private:
     // display
     display &d;
@@ -45,6 +46,11 @@ private:
     // get view 
     static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
     static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
+
+    // last draw
+    int center_x;
+    int center_y;
+    double zoom;
 };
 
 #endif

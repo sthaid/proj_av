@@ -338,15 +338,14 @@ int main(int argc, char **argv)
                     break;
                 }
                 if (event.eid == eid_cr_click) {
-                    // XXX make this a function
-                    double world_display_width = world::WORLD_WIDTH / zoom;
-                    double world_display_height = world::WORLD_HEIGHT / zoom;
-                    create_roads_run = false;
-                    create_road_x = (center_x - world_display_width / 2) + 
-                                    (world_display_width / PANE_WORLD_WIDTH * event.val1);
-                    create_road_y = (center_y - world_display_height / 2) + 
-                                    (world_display_height / PANE_WORLD_HEIGHT * event.val2);
+                    int x,y;
+                    w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH, 
+                                               (double)event.val2/PANE_WORLD_HEIGHT, 
+                                               x, y);
+                    create_road_x = x;
+                    create_road_y = y;
                     create_road_dir = 0;
+                    create_roads_run = false;
                     break;
                 }
                 if (event.eid == eid_rol) {

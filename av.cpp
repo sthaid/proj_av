@@ -97,13 +97,6 @@ inline void display_message(string msg)
 
 int main(int argc, char **argv)
 {
-    enum mode { RUN, PAUSE };
-
-    string     world_filename = "world.dat";
-    enum mode  mode = PAUSE;
-    bool       done = false;
-    long       start_time_us, end_time_us, delay_us;
-
     //
     // INITIALIZATION
     //
@@ -119,8 +112,9 @@ int main(int argc, char **argv)
             return 1;
         }
     }
+    string filename = "world.dat";
     if ((argc - optind) >= 1) {
-        world_filename = argv[optind];
+        filename = argv[optind];
     }
 
     // create the display
@@ -131,8 +125,9 @@ int main(int argc, char **argv)
     car::static_init(d);
 
     // create the world
-    world w(d,world_filename);
-    display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
+    world w(d);
+    bool success = w.read(filename);
+    display_message(success ? "READ SUCCESS" : "READ FAILURE");
 
     // create cars
 #if 0
@@ -153,12 +148,16 @@ int main(int argc, char **argv)
     // MAIN LOOP
     //
 
+    enum mode { RUN, PAUSE };
+    enum mode  mode = PAUSE;
+    bool       done = false;
+
     while (!done) {
         //
         // STORE THE START TIME
         //
 
-        start_time_us = microsec_timer();
+        long start_time_us = microsec_timer();
 
         //
         // CAR SIMULATION
@@ -271,8 +270,8 @@ int main(int argc, char **argv)
         //
 
         // delay to complete CYCLE_TIME_US
-        end_time_us = microsec_timer();
-        delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
+        long end_time_us = microsec_timer();
+        long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
         // oncer per second, debug print this cycle's processing tie

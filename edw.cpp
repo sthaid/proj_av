@@ -37,7 +37,7 @@
 double       center_x = world::WORLD_WIDTH / 2;
 double       center_y = world::WORLD_HEIGHT / 2;
 const double ZOOM_FACTOR = 1.1892071;
-const double MAX_ZOOM    = 64.0 - .01;
+const double MAX_ZOOM    = 256.0 - .01;
 const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
 double       zoom = 1.0; 
 
@@ -59,6 +59,20 @@ double    create_road_y = INITIAL_CREATE_ROAD_Y;
 double    create_road_dir = INITIAL_CREATE_ROAD_DIR;
 int       create_road_steering_idx = 5;
 
+// edit pixels mode
+typedef struct {
+    int x,y,w,h;
+    enum display::color color;
+} edit_pixels_color_select_t;
+const int MAX_EDIT_PIXELS_COLOR_SELECT = 4;
+edit_pixels_color_select_t edit_pixels_color_select_tbl[MAX_EDIT_PIXELS_COLOR_SELECT] = 
+    { { 0,    50, 75, 75, display::GREEN  },
+      { 150,  50, 75, 75, display::BLACK  },
+      { 300,  50, 75, 75, display::YELLOW },
+      { 450,  50, 75, 75, display::RED    },
+          };
+display::color edit_pixels_color_selection = display::GREEN;
+
 // display message utility
 inline void display_message(string msg)
 {
@@ -70,13 +84,6 @@ inline void display_message(string msg)
 
 int main(int argc, char **argv)
 {
-    enum mode { MAIN, CREATE_ROADS };
-
-    string    world_filename = "world.dat";
-    enum mode mode = MAIN;
-    bool      done = false;
-    long      start_time_us, end_time_us, delay_us;
-
     //
     // INITIALIZATION
     //
@@ -94,8 +101,9 @@ int main(int argc, char **argv)
     }
 
     // get args
+    string filename = "world.dat";
     if ((argc - optind) >= 1) {
-        world_filename = argv[optind];
+        filename = argv[optind];
     }
 
     // create the display
@@ -106,19 +114,24 @@ int main(int argc, char **argv)
     car::static_init(d);
 
     // create the world
-    world w(d,world_filename);
-    display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
+    world w(d);
+    bool success = w.read(filename);
+    display_message(success ? "READ SUCCESS" : "READ FAILURE");
 
     //
     // MAIN LOOP
     //
+
+    enum mode { MAIN, CREATE_ROADS, EDIT_PIXELS };
+    enum mode mode = MAIN;
+    bool      done = false;
 
     while (!done) {
         //
         // STORE THE START TIME
         //
 
-        start_time_us = microsec_timer();
+        long start_time_us = microsec_timer();
 
         //
         // DISPLAY UPDATE 
@@ -174,45 +187,77 @@ int main(int argc, char **argv)
             d.text_draw(s.str(), 8, 0, 1);
         }
 
+        // draw for mode EDIT_PIXELS
+        if (mode == EDIT_PIXELS) {
+            for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
+                edit_pixels_color_select_t &p = edit_pixels_color_select_tbl[i];
+                d.draw_set_color(display::WHITE);
+                d.draw_rect(p.x-2, p.y-2, p.w+4, p.h+4, PANE_CTRL_ID, 2);
+                d.draw_set_color(p.color);
+                d.draw_filled_rect(p.x, p.y, p.w, p.h, PANE_CTRL_ID);
+            }
+
+            // xxx d.text_draw("SELECTION", 5, 0, PANE_CTRL_ID_;
+            d.draw_set_color(edit_pixels_color_selection);
+            d.draw_filled_rect(150, 300, 300, 75, PANE_CTRL_ID);
+            d.draw_set_color(display::WHITE);
+            d.draw_rect(150-2, 300-2, 300+4, 75+4,  PANE_CTRL_ID, 2);
+        }
+
         // draw the message box
         if (message_time_us < MAX_MESSAGE_TIME_US) {
-            d.text_draw(message, 17, 0, PANE_MSG_BOX_ID);
+            d.text_draw(message, 0, 0, PANE_MSG_BOX_ID);
             message_time_us += CYCLE_TIME_US;
         }
 
         // draw and register events
         int eid_clear=-1, eid_write=-1, eid_reset=-1, eid_quit=-1, eid_quit_win=-1, eid_pan=-1, eid_zoom=-1;
-        int eid_create_roads=-1;
-        int eid_1=-1, eid_9=-1, eid_run=-1, eid_stop=-1, eid_done=-1, eid_rol=-1, eid_ror=-1, eid_click=-1;
+        int eid_create_roads=-1, eid_edit_pixels=-1;
+
+        int eid_1=-1, eid_9=-1, eid_run=-1, eid_stop=-1, eid_back=-1, eid_rol=-1, eid_ror=-1, eid_click=-1;
         __attribute__((unused)) int eid_2=-1, eid_3=-1, eid_4=-1, eid_5=-1, eid_6=-1, eid_7=-1, eid_8=-1;
 
+        int eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT];
+        for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
+            eid_color_select[i] = -1;
+        }
+
         eid_write    = d.text_draw("WRITE",        13,  0, PANE_CTRL_ID, true);      
-        eid_quit     = d.text_draw("QUIT",         13, 10, PANE_CTRL_ID, true);     
+        eid_quit     = d.text_draw("QUIT",         13,  8, PANE_CTRL_ID, true);     
         eid_reset    = d.text_draw("RESET",        15,  0, PANE_CTRL_ID, true);     
-        eid_clear    = d.text_draw("CLEAR",        15, 10, PANE_CTRL_ID, true);      
+        eid_clear    = d.text_draw("CLEAR",        15,  8, PANE_CTRL_ID, true);      
         eid_quit_win = d.event_register(display::ET_QUIT);
-        eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
-        eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
+        eid_pan      = d.event_register(display::ET_MOUSE_MOTION, PANE_WORLD_ID);
+        eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, PANE_WORLD_ID);
         switch (mode) {
         case MAIN:
-            eid_create_roads = d.text_draw("CREATE_ROADS",  0, 0, 1, true);  // r,c,pid,event
+            eid_create_roads = d.text_draw("CREATE_ROADS",  0, 0, PANE_CTRL_ID, true);  // r,c,pid,event
+            eid_edit_pixels  = d.text_draw("EDIT_PIXELS",   1, 0, PANE_CTRL_ID, true);  // r,c,pid,event
             break;
         case CREATE_ROADS:
-            eid_1     = d.text_draw("1",             0, 0, 1, true, '1');
-            eid_2     = d.text_draw("2",             0, 2, 1, true, '2');      
-            eid_3     = d.text_draw("3",             0, 4, 1, true, '3');      
-            eid_4     = d.text_draw("4",             0, 6, 1, true, '4');      
-            eid_5     = d.text_draw("5",             0, 8, 1, true, '5');      
-            eid_6     = d.text_draw("6",             0,10, 1, true, '6');      
-            eid_7     = d.text_draw("7",             0,12, 1, true, '7');      
-            eid_8     = d.text_draw("8",             0,14, 1, true, '8');  
-            eid_9     = d.text_draw("9",             0,16, 1, true, '9');      
-            eid_rol   = d.text_draw("ROL",           3, 0, 1, true, display::KEY_LEFT);
-            eid_ror   = d.text_draw("ROR",           3, 7, 1, true, display::KEY_RIGHT);
-            eid_run   = d.text_draw("RUN",           5, 0, 1, true, 'r');      
-            eid_stop  = d.text_draw("STOP",          5, 7, 1, true, 's');      
-            eid_done  = d.text_draw("DONE",          5,14, 1, true, 'd'); 
-            eid_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, 0);
+            eid_1     = d.text_draw("1",             0, 0, PANE_CTRL_ID, true, '1');
+            eid_2     = d.text_draw("2",             0, 2, PANE_CTRL_ID, true, '2');      
+            eid_3     = d.text_draw("3",             0, 4, PANE_CTRL_ID, true, '3');      
+            eid_4     = d.text_draw("4",             0, 6, PANE_CTRL_ID, true, '4');      
+            eid_5     = d.text_draw("5",             0, 8, PANE_CTRL_ID, true, '5');      
+            eid_6     = d.text_draw("6",             0,10, PANE_CTRL_ID, true, '6');      
+            eid_7     = d.text_draw("7",             0,12, PANE_CTRL_ID, true, '7');      
+            eid_8     = d.text_draw("8",             0,14, PANE_CTRL_ID, true, '8');  
+            eid_9     = d.text_draw("9",             0,16, PANE_CTRL_ID, true, '9');      
+            eid_rol   = d.text_draw("ROL",           3, 0, PANE_CTRL_ID, true, display::KEY_LEFT);
+            eid_ror   = d.text_draw("ROR",           3, 8, PANE_CTRL_ID, true, display::KEY_RIGHT);
+            eid_run   = d.text_draw("RUN",           5, 0, PANE_CTRL_ID, true, 'r');      
+            eid_stop  = d.text_draw("STOP",          5, 8, PANE_CTRL_ID, true, 's');      
+            eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
+            eid_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
+            break;
+        case EDIT_PIXELS:
+            eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
+            eid_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);  // XXX name
+            for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
+                edit_pixels_color_select_t &p = edit_pixels_color_select_tbl[i];
+                eid_color_select[i] = d.event_register(display::ET_MOUSE_LEFT_CLICK, PANE_CTRL_ID, p.x, p.y, p.w, p.h);
+            }
             break;
         }
 
@@ -241,14 +286,13 @@ int main(int argc, char **argv)
                 break;
             }
             if (event.eid == eid_write) {
-                w.write();
-                display_message(w.write_ok() ? "WRITE SUCCESS" : "WRITE FAILURE");
-// XXX message not displayed
+                bool success = w.write(filename);
+                display_message(success ? "WRITE SUCCESS" : "WRITE FAILURE");
                 break;
             }
             if (event.eid == eid_reset) {
-                w.read();
-                display_message(w.read_ok() ? "READ SUCCESS" : "READ FAILURE");
+                bool success = w.read(filename);
+                display_message(success ? "READ SUCCESS" : "READ FAILURE");
                 break;
             }
             if (event.eid == eid_pan) {
@@ -272,6 +316,10 @@ int main(int argc, char **argv)
                     mode = CREATE_ROADS;
                     break;
                 }
+                if (event.eid == eid_edit_pixels) {
+                    mode = EDIT_PIXELS;
+                    break;
+                }
             }
 
             // CREATE_ROADS mode events
@@ -285,15 +333,17 @@ int main(int argc, char **argv)
                     create_road_dir = (int)(create_road_dir + 0.5);
                     break;
                 }
-                if (event.eid == eid_done) {
+                if (event.eid == eid_back) {
                     create_roads_run = false;
                     mode = MAIN;
                     break;
                 }
                 if (event.eid >= eid_1 && event.eid <= eid_9) {
                     create_road_steering_idx = event.eid - eid_1 + 1;
+                    break;
                 }
                 if (event.eid == eid_click) {
+// xxx make this a function
                     double world_display_width = world::WORLD_WIDTH / zoom;
                     double world_display_height = world::WORLD_HEIGHT / zoom;
                     create_roads_run = false;
@@ -304,18 +354,70 @@ int main(int argc, char **argv)
                     create_road_dir = 0;
                     // xxx INFO("MOUSE " << event.val1 << " " << event.val2 << endl);
                     // xxx INFO("XY = " << create_road_x << " " << create_road_y << endl);
+                    break;
                 }
                 if (event.eid == eid_rol) {
                     create_road_dir = (int)(create_road_dir + 0.5) - 1;
                     if (create_road_dir < 0) {
                         create_road_dir += 360;
                     }
+                    break;
                 }
                 if (event.eid == eid_ror) {
                     create_road_dir = (int)(create_road_dir + 0.5) + 1;
                     if (create_road_dir > 360) {
                         create_road_dir -= 360;
                     }
+                    break;
+                }
+            }
+
+            // EDIT_PIXELS mode events
+            if (mode == EDIT_PIXELS) {
+                if (event.eid == eid_back) {
+                    create_roads_run = false;
+                    mode = MAIN;
+                    break;
+                }
+                if (event.eid == eid_click) {
+                    int  world_display_width = world::WORLD_WIDTH / zoom;
+                    int  world_display_height = world::WORLD_HEIGHT / zoom;
+                    int  world_x, world_y;
+
+INFO("CENTER_X " << center_x << " W/2 "<< world_display_width / 2 << " CALC " << (center_x - world_display_width / 2) << endl);
+                    world_x = ((int)center_x - world_display_width / 2) + 
+                              ((double)world_display_width / PANE_WORLD_WIDTH * event.val1);
+INFO("CENTER_Y " << center_y << " H/2 "<< world_display_height / 2 << " CALC " << (center_y - world_display_height / 2) << endl);
+                    world_y = ((int)center_y - world_display_height / 2)  + 
+                              ((double)world_display_height / PANE_WORLD_HEIGHT * event.val2);
+
+#if 0
+                    // xxx this is pretty good
+                    world_x = (int)(center_x - world_display_width / 2) + 
+                              (world_display_width / PANE_WORLD_WIDTH * event.val1);
+                    world_y = (int)(center_y - world_display_height / 2)  + 
+                              (world_display_height / PANE_WORLD_HEIGHT * event.val2);
+#endif
+#if 0
+                    world_x = (center_x - world_display_width / 2) + 
+                              (world_display_width / PANE_WORLD_WIDTH * event.val1);
+                    world_y = (center_y - world_display_height / 2) + 
+                              (world_display_height / PANE_WORLD_HEIGHT * event.val2);
+#endif
+                    INFO("XXX " << world_x << " " << world_y << endl);
+
+// XXX need undo
+                    w.set_pixel(world_x, world_y, edit_pixels_color_selection);
+                    //AAA
+                    // xxx INFO("MOUSE " << event.val1 << " " << event.val2 << endl);
+                    // xxx INFO("XY = " << create_road_x << " " << create_road_y << endl);
+                    break;
+                }
+                if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {
+                    INFO("GOT " << event.eid - eid_color_select[0] << endl);
+                    edit_pixels_color_selection = 
+                            edit_pixels_color_select_tbl[event.eid - eid_color_select[0]].color;
+                    break;
                 }
             }
         } while (0);
@@ -325,18 +427,18 @@ int main(int argc, char **argv)
         //
 
         // delay to complete CYCLE_TIME_US
-        end_time_us = microsec_timer();
-        delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
+        long end_time_us = microsec_timer();
+        long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
         // oncer per second, debug print this cycle's processing tie
         static int count;
         if (++count == 1000000 / CYCLE_TIME_US) {
             count = 0;
-            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
+            //INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }
 
-#if 1
+#if 0
         // determine average cycle time
         // xxx make this a routine, or just delete
         {

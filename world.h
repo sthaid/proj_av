@@ -12,24 +12,23 @@ public:
     static const int WORLD_HEIGHT = 4096;
     static const int MAX_GET_VIEW_XY = 1000;
     
-    world(display &display, string filename);
-    ~world();
-
     static void static_init();
+
+    world(display &display);
+    ~world();
+    void clear();
+    bool read(string filename);
+    bool write(string filename);
 
     void place_object_init();
     void place_object(double x, double y, int w, int h, unsigned char * pixels);
+    void draw(int pid, double center_x, double center_y, double zoom);
 
     void get_view(double x, double y, double dir, int w, int h, unsigned char * pixels);
 
-    void draw(int pid, double center_x, double center_y, double zoom);
-
     void create_road_slice(double &x, double &y, double dir);
-    void clear();
-    void read();
-    void write();
-    bool read_ok() { return read_ok_flag; }
-    bool write_ok() { return write_ok_flag; }
+    void set_pixel(double x, double y, unsigned char c);
+    unsigned char get_pixel(double x, double y);
 private:
     // display
     display &d;
@@ -47,13 +46,6 @@ private:
     // get view 
     static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
     static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
-
-    // edit, and read/write static pixels support
-    void set_static_pixel(double x, double y, unsigned char c);
-    unsigned char get_static_pixel(double x, double y);
-    string filename;
-    bool read_ok_flag;
-    bool write_ok_flag;
 };
 
 #endif

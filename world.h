@@ -21,14 +21,14 @@ public:
     bool write(string filename);
 
     void place_object_init();
-    void place_object(double x, double y, int w, int h, unsigned char * pixels);
-    void draw(int pid, double center_x, double center_y, double zoom);
+    void place_object(int x, int y, int w, int h, unsigned char * pixels);
+    void draw(int pid, int center_x, int center_y, double zoom);
 
-    void get_view(double x, double y, double dir, int w, int h, unsigned char * pixels);
+    void get_view(int x, int y, double dir, int w, int h, unsigned char * pixels);
 
-    void create_road_slice(double &x, double &y, double dir);
-    void set_pixel(double x, double y, unsigned char c);
-    unsigned char get_pixel(double x, double y);
+    void create_road_slice(double x, double y, double dir);
+    void set_pixel(int x, int y, unsigned char c);
+    unsigned char get_pixel(int x, int y);
 private:
     // display
     display &d;

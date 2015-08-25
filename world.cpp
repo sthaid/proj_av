@@ -130,18 +130,15 @@ void world::place_object_init()
     max_placed_object_list = 0;
 }
 
-void world::place_object(double x_arg, double y_arg, int w_arg, int h_arg, unsigned char * pixels_arg)
+void world::place_object(int x, int y, int w, int h, unsigned char * p)
 {
-    // convert x,y to integer, and adjust to the top left corner of the object rect
-    // xxx this could be more accurate, but need to retest car display in 4 totations
-    int x  = (x_arg + 0.5);
-    int y  = (y_arg + 0.5);
-    x -= w_arg / 2;
-    y -= h_arg / 2;
+    // adjuct x,y to top left corner of the object's rect
+    x -= w / 2;
+    y -= h / 2;
 
     // if object is off an edge of the world then skip
-    if (x < 0 || x+w_arg >= WORLD_WIDTH ||
-        y < 0 || y+h_arg >= WORLD_HEIGHT) 
+    if (x < 0 || x+w >= WORLD_WIDTH ||
+        y < 0 || y+h >= WORLD_HEIGHT) 
     {
         return;
     }
@@ -150,17 +147,17 @@ void world::place_object(double x_arg, double y_arg, int w_arg, int h_arg, unsig
     struct rect &rect = placed_object_list[max_placed_object_list];
     rect.x = x;
     rect.y = y;
-    rect.w = w_arg;
-    rect.h = h_arg;
+    rect.w = w;
+    rect.h = h;
     max_placed_object_list++;
 
     // copy non transparent object pixels to pixels
     for (y = rect.y; y < rect.y+rect.h; y++) {
         for (x = rect.x; x < rect.x+rect.w; x++) {
-            if (*pixels_arg != display::TRANSPARENT) {
-                pixels[y][x] = *pixels_arg;
+            if (*p != display::TRANSPARENT) {
+                pixels[y][x] = *p;
             }
-            pixels_arg++;
+            p++;
         }
     }
 
@@ -171,38 +168,34 @@ void world::place_object(double x_arg, double y_arg, int w_arg, int h_arg, unsig
                        WORLD_WIDTH);
 }
 
-void world::draw(int pid, double center_x, double center_y, double zoom)
+void world::draw(int pid, int center_x, int center_y, double zoom)
 {
     int w, h, x, y;
 
     w = WORLD_WIDTH / zoom;
     h = WORLD_HEIGHT / zoom;
-    x = (int)center_x - w/2;
-    y = (int)center_y - h/2;
+    x = center_x - w/2;
+    y = center_y - h/2;
 
     d.texture_draw(texture, x, y, w, h, pid);
 }
 
 // -----------------  GET VIEW OF THE WORLD  ----------------------------------------
 
-void world::get_view(double x_arg, double y_arg, double dir_arg, int w_arg, int h_arg, unsigned char * p_arg)
+void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 {
-    int x = x_arg + 0.5;
-    int y = y_arg + 0.5;
-    int d = dir_arg + 0.5;
-
-    if (d == 360) d = 0;  // xxx
-
+    int d = dir + 0.5;
+    if (d == 360) d = 0;  // xxx use a macro or util func
     assert(d >= 0 && d <= 359);
 
-    for (int h = h_arg-1; h >= 0; h--) {
-        for (int w = -w_arg/2; w < -w_arg/2+w_arg; w++) {
+    for (int h = H-1; h >= 0; h--) {
+        for (int w = -W/2; w < -W/2+W; w++) {
             int dx = get_view_dx_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
             int dy = get_view_dy_tbl[d][h][w+(MAX_GET_VIEW_XY/2)];
             if (y+dy >= 0 && y+dy < WORLD_HEIGHT && x+dx >= 0 && x+dx < WORLD_WIDTH) {
-                *p_arg++ = pixels[y+dy][x+dx];
+                *p++ = pixels[y+dy][x+dx];
             } else {
-                *p_arg++ = display::PURPLE;
+                *p++ = display::PURPLE;
             }
         }
     }
@@ -210,7 +203,8 @@ void world::get_view(double x_arg, double y_arg, double dir_arg, int w_arg, int 
 
 // -----------------  EDIT SUPPORT  -------------------------------------------------
 
-void world::create_road_slice(double &x, double &y, double dir)
+// XXX move this to edit pgm
+void world::create_road_slice(double x, double y, double dir)
 {
     double dpx, dpy, tmpx, tmpy;
     const double distance = 0.5;
@@ -243,30 +237,23 @@ void world::create_road_slice(double &x, double &y, double dir)
     }
 }
         
-void world::set_pixel(double x, double y, unsigned char p) 
+void world::set_pixel(int x, int y, unsigned char p) 
 {
-    int ix = x; // + .5;
-    int iy = y; // + .5;
-
-    if (ix < 0 || ix >= WORLD_WIDTH || iy < 0 || iy >= WORLD_HEIGHT) {
+    if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {
         return;
     }
 
-    static_pixels[iy][ix] = p;
-    pixels[iy][ix] = p;
-    d.texture_set_pixel(texture, ix, iy, p);
+    static_pixels[y][x] = p;
+    pixels[y][x] = p;
+    d.texture_set_pixel(texture, x, y, p);
 }
 
-unsigned char world::get_pixel(double x, double y)
+unsigned char world::get_pixel(int x, int y)
 {
-    int ix = x; //  + .5;
-    int iy = y; //  + .5;
-
-    if (ix < 0 || ix >= WORLD_WIDTH || iy < 0 || iy >= WORLD_HEIGHT) {
-        ERROR("ix " << ix << " iy " << iy << endl);
+    if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {
         return display::GREEN;
     }
 
-    return static_pixels[iy][ix];
+    return static_pixels[y][x];
 }
 

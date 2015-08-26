@@ -97,7 +97,6 @@ display::display(int w, int h, bool resizeable)
         FATAL("TTF_Init failed" << endl);
     }
 
-    // xxx configure font size
     const char * font0_path = "fonts/FreeMonoBold.ttf";         // normal 
     int      font0_ptsize = win_height / 18 - 1;
     const char * font1_path = "fonts/FreeMonoBold.ttf";         // extra large
@@ -437,6 +436,8 @@ struct display::texture * display::texture_create(int w, int h)
 
 struct display::texture * display::texture_create(unsigned char * pixels, int w, int h)
 {
+    int ret;
+
     // creae surface from pixels
     SDL_Surface * surface;
     surface = SDL_CreateRGBSurfaceFrom(pixels, 
@@ -447,19 +448,20 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     // set surface palette
     SDL_Palette * palette = SDL_AllocPalette(256);
     SDL_SetPaletteColors(palette, colors, 0, 256);
-    int ret = SDL_SetSurfacePalette(surface, palette);
-    INFO("set palette " << ret << " " << SDL_GetError() << endl);
+    ret = SDL_SetSurfacePalette(surface, palette);
+    assert(ret == 0);
 
     // create texture from surface
     SDL_Texture * texture;
     texture = SDL_CreateTextureFromSurface(renderer, surface);
-    INFO("texture " << texture << " " << SDL_GetError() << " renderer " << renderer << endl);
+    assert(texture);
 
     // free the surface
     SDL_FreeSurface(surface); 
 
+    // set texture blend mode
     ret = SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-    INFO("xxx SET BLEND " << ret << " " << SDL_GetError() << endl);
+    assert(ret == 0);
 
     // assert that the texture has the expected pixel format
     unsigned int fmt;
@@ -488,9 +490,12 @@ void display::texture_clr_pixel(struct texture * t, int x, int y)
 
 void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels, int pitch)
 {
-    unsigned int raw_pixels[100000];  // xxx
+    unsigned int raw_pixels[100000];
     unsigned int * rp = raw_pixels;
     SDL_Rect rect;
+
+    // XXX should allocate memory instead of fixed array
+    assert(w*h <= 100000);
 
     rect.x = x;
     rect.y = y;
@@ -506,21 +511,6 @@ void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, u
 
     SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, raw_pixels, 4*w);
 }
-
-#if 0  // xxx Not used
-void display::texture_clr_rect(struct texture * t, int x, int y, int w, int h)
-{
-    static unsigned int transparent_pixels[20000];  // xxx
-
-    SDL_Rect rect;
-    rect.x = x;
-    rect.y = y;
-    rect.w = w;
-    rect.h = h;
-
-    SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, transparent_pixels, 4*w);
-}
-#endif
 
 void display::texture_destroy(struct texture * t)
 {
@@ -779,7 +769,6 @@ struct display::event display::event_poll()
             }
 
             // get all additional pending mouse motion events, and sum the motion
-            // xxx what if pos left the pane
             event.eid = mouse_motion_eid;
             event.val1 = 0;  // delta_x
             event.val2 = 0;  // delta_y

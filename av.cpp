@@ -174,19 +174,18 @@ int main(int argc, char **argv)
         w.place_object_init();
         for (int i = 0; i < max_car; i++) {
             car[i]->place_car_in_world();
-            // xxx w.place_(car[i]->get_x(), car[i]->get_y(), car[i]->get_dir());
         }
 
         // update all car controls: steering and speed
         if (mode == RUN) {            
-            car_update_controls_idx = 0;  // xxx check the order of these
             car_update_controls_completed = 0;
+            car_update_controls_idx = 0;
             car_update_controls_cv1.notify_all();
             std::unique_lock<std::mutex> car_update_controls_cv2_lck(car_update_controls_cv2_mtx);
             while (car_update_controls_completed != max_car) {
                 car_update_controls_cv2.wait(car_update_controls_cv2_lck);
             }
-            car_update_controls_cv2_lck.unlock(); // xxx not needed
+            car_update_controls_cv2_lck.unlock(); // not needed, unique_lock automatically unlocks
         }
 
         //
@@ -222,9 +221,12 @@ int main(int argc, char **argv)
         // finish, updates the display
         d.finish();
 
-        // xxx
+        // 
+        // SET MODE TO PAUSE IF CAR[0] HAS FAILED XXX TEMP
+        // 
+
         if (car[0]->get_failed() && mode != PAUSE) {
-            INFO(" *** PAUSIN ***\n");
+            INFO(" *** PAUSING ***\n");
             mode = PAUSE;
         }
 
@@ -274,31 +276,12 @@ int main(int argc, char **argv)
         long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
-        // oncer per second, debug print this cycle's processing tie
+#if 1
+        // oncer every 10 secs, debug print this cycle's processing tie
         static int count;
-        if (++count == 1000000 / CYCLE_TIME_US) {
+        if (++count == 10000000 / CYCLE_TIME_US) {
             count = 0;
-            // INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
-        }
-
-#if 0
-        // determine average cycle time
-        // xxx make this a routine, or just delete
-        {
-            const int   MAX_TIMES=10;
-            static long times[MAX_TIMES];
-            int avg_cycle_time = 0;
-            memmove(times+1, times, (MAX_TIMES-1)*sizeof(long));
-            times[0] = microsec_timer();
-            if (times[MAX_TIMES-1] != 0) {
-                avg_cycle_time = (times[0] - times[MAX_TIMES-1]) / (MAX_TIMES-1);
-            }
-
-            // xxx temp
-            static int count;
-            if ((++count % 100) == 0) {
-                INFO("AVG CYCLE TIME " << avg_cycle_time / 1000. << endl);
-            }
+            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }
 #endif
     }

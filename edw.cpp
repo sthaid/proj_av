@@ -393,29 +393,12 @@ int main(int argc, char **argv)
         long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
-        // oncer per second, debug print this cycle's processing tie
+#if 1
+        // oncer every 10 secs, debug print this cycle's processing time
         static int count;
-        if (++count == 1000000 / CYCLE_TIME_US) {
+        if (++count == 10000000 / CYCLE_TIME_US) {
             count = 0;
-            //INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
-        }
-
-#if 0
-        // determine average cycle time
-        // xxx make this a routine, or just delete
-        {
-            const int   MAX_TIMES=10;
-            static long times[MAX_TIMES];
-            double avg_cycle_time = 0;
-            memmove(times+1, times, (MAX_TIMES-1)*sizeof(long));
-            times[0] = microsec_timer();
-            if (times[MAX_TIMES-1] != 0) {
-                avg_cycle_time = (times[0] - times[MAX_TIMES-1]) / (MAX_TIMES-1);
-            }
-            static int count;
-            if ((++count % 100) == 0) {
-                INFO("AVG CYCLE TIME " << avg_cycle_time / 1000. << endl);
-            }
+            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
         }
 #endif
     }

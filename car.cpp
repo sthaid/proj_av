@@ -17,8 +17,8 @@ display::texture *car::texture;
 void car::static_init(display &d)
 {
     //
-    // xxx comment
-    // xxx should be destroyed 
+    // XXX comment
+    // XXX should be destroyed 
     //
 
     texture = d.texture_create(MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT);
@@ -89,7 +89,7 @@ car::car(display &display, world &world, double x_arg, double y_arg, double dir_
     steer_ctl = 0;
     failed    = false;
 
-    // xxx check max_speed and others in constructor
+    // XXX check max_speed and others in constructor
 }
 
 car::~car()
@@ -166,8 +166,7 @@ void car::draw_front_view_and_dashboard(int front_view_pid, int dashboard_pid)
     d.texture_set_rect(texture, 0, 0, MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT, front_view, MAX_FRONT_VIEW_WIDTH);
     d.texture_draw(texture, 0, 0, MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT, front_view_pid);
 
-    // dashboard  (600 x 100)
-    // xxx should be able to get the pane w,h if desired from display.h
+    // dashboard (600 x 100) ...
 
     // current speed
     std::ostringstream s;

@@ -14,7 +14,7 @@ using std::ios;
 // -----------------  WORLD CLASS STATIC INITIALIZATION  ----------------------------
 
 short world::get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
-short world::get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];  // xxx make these tables bigger
+short world::get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 
 void world::static_init(void)
 {
@@ -193,6 +193,7 @@ void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 {
     int d = sanitize_direction(dir + 0.5);
     assert(d >= 0 && d <= 359);
+    // XXX assert W and H not too big
 
     for (int h = H-1; h >= 0; h--) {
         for (int w = -W/2; w < -W/2+W; w++) {

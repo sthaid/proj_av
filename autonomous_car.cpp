@@ -1,17 +1,61 @@
+#include <cassert>
 #include <math.h>
 
 #include "autonomous_car.h"
 #include "logging.h"
 #include "utils.h"
 
-autonomous_car::autonomous_car(display &display, world &world, double x, double y, double dir, double speed)
-    : car(display,world,x,y,dir,speed)
+// -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
+
+autonomous_car::autonomous_car(display &display, world &world, int id, double x, double y, double dir, double speed)
+    : car(display,world,id,x,y,dir,speed)
 {
 }
 
 autonomous_car::~autonomous_car()
 {
 }
+
+// -----------------  DRAW VIEW VIRTUAL FUNCTION  ---------------------------------
+
+void autonomous_car::draw_view(int pid)
+{
+    const int MAX_VIEW_WIDTH = 150;
+    const int MAX_VIEW_HEIGHT = 390;
+    static struct display::texture * t;
+    unsigned char view[MAX_VIEW_WIDTH*MAX_VIEW_HEIGHT];
+    class display &d = get_display();
+    class world &w = get_world();
+
+    if (t == NULL) {
+        t = d.texture_create(MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
+        assert(t);
+    }
+
+    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view);
+    d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view, MAX_VIEW_WIDTH);
+    d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
+
+    d.text_draw("FRONT", 0, 0, pid, false, 0, 1, true);
+}
+
+// -----------------  DRAW DASHBOARD VIRTUAL FUNCTION  -----------------------------
+
+void autonomous_car::draw_dashboard(int pid)
+{
+    class display &d = get_display();
+
+    // call base class draw_dashboard 
+    car::draw_dashboard(pid);
+
+    // draw around the autonomous dashboard
+    d.draw_rect(0,98,590,102,pid,2);
+
+    // XXX autonomous dash content is tbd
+    d.text_draw("AUTONOMOUS DASH", 3.0, 0, pid, false, 0, 0, true);
+}
+
+// -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
 
 void autonomous_car::update_controls(double microsecs)
 {

@@ -180,7 +180,7 @@ void world::draw(int pid, int center_x_arg, int center_y_arg, double zoom_arg)
     x = center_x_arg - w/2;
     y = center_y_arg - h/2;
 
-    d.texture_draw(texture, x, y, w, h, pid);
+    d.texture_draw1(texture, x, y, w, h, pid);
 
     center_x = center_x_arg;
     center_y = center_y_arg;

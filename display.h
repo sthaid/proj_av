@@ -67,7 +67,8 @@ public:
     void texture_clr_pixel(struct texture * t, int x, int y);
     void texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels, int pitch);
     void texture_destroy(struct texture * t);
-    void texture_draw(struct texture * t, int x, int y, int w, int h, int pid=0);
+    void texture_draw1(struct texture * t, int x, int y, int w, int h, int pid=0);
+    void texture_draw2(struct texture * t, int pid=0, int x=0, int y=0, int w=0, int h=0);
 
     int event_register(enum event_type et, int pid=0);
     int event_register(enum event_type et, int pid, int x, int y, int w, int h);

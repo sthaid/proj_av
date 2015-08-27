@@ -7,7 +7,6 @@
 
 #include "display.h"
 #include "world.h"
-#include "fixed_control_car.h"
 #include "autonomous_car.h"
 #include "logging.h"
 #include "utils.h"
@@ -37,13 +36,13 @@ using std::condition_variable;
 #define PANE_CAR_DASHBOARD_X        820
 #define PANE_CAR_DASHBOARD_Y        400
 #define PANE_CAR_DASHBOARD_WIDTH    600
-#define PANE_CAR_DASHBOARD_HEIGHT   100
+#define PANE_CAR_DASHBOARD_HEIGHT   200
 
 #define PANE_PGM_CTL_ID             3                        
 #define PANE_PGM_CTL_X              820
-#define PANE_PGM_CTL_Y              500
+#define PANE_PGM_CTL_Y              620
 #define PANE_PGM_CTL_WIDTH          600
-#define PANE_PGM_CTL_HEIGHT         250
+#define PANE_PGM_CTL_HEIGHT         130
 
 #define PANE_MSG_BOX_ID             4
 #define PANE_MSG_BOX_X              820 
@@ -68,10 +67,8 @@ string    message = "";
 int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // cars
-//typedef class fixed_control_car CAR;
-typedef class autonomous_car CAR;   
 const int     MAX_CAR = 1000;
-CAR         * car[MAX_CAR];
+class car   * car[MAX_CAR];
 int           max_car = 0;
 
 // update car controls threads
@@ -131,11 +128,12 @@ int main(int argc, char **argv)
 
     // create cars
 #if 0
+    int id=0;
     for (double dir = 0; dir < 360; dir += 1) {
-        car[max_car++] = new CAR(d,w,2048,2048,dir, 30);
+        car[max_car++] = new class car(d,w,id++,2048,2048,dir, 30);  //xxx needs id arg
     }
 #else
-    car[max_car++] = new CAR(d,w,2054,2048,0,50);
+    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,50);
 #endif
 
     // create threads to update car controls
@@ -203,7 +201,8 @@ int main(int argc, char **argv)
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 
         // draw car front view and dashboard
-        car[0]->draw_front_view_and_dashboard(PANE_CAR_VIEW_ID, PANE_CAR_DASHBOARD_ID);
+        car[0]->draw_view(PANE_CAR_VIEW_ID);
+        car[0]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
 
         // draw the message box
         if (message_time_us < MAX_MESSAGE_TIME_US) {
@@ -215,8 +214,8 @@ int main(int argc, char **argv)
         int eid_quit_win = d.event_register(display::ET_QUIT);
         int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run      = d.text_draw("RUN",   1, 0, PANE_PGM_CTL_ID, true, 'r');      
-        int eid_pause    = d.text_draw("PAUSE", 1, 7, PANE_PGM_CTL_ID, true, 's');      
+        int eid_run      = d.text_draw("RUN",   0, 0, PANE_PGM_CTL_ID, true, 'r');      
+        int eid_pause    = d.text_draw("PAUSE", 0, 7, PANE_PGM_CTL_ID, true, 's');      
 
         // finish, updates the display
         d.finish();

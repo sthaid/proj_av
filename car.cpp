@@ -10,20 +10,11 @@
 using std::ostringstream;
 
 unsigned char car::car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
-display::texture *car::texture;
 
 // -----------------  CAR CLASS STATIC INITIALIZATION  ------------------------------
 
 void car::static_init(display &d)
 {
-    //
-    // XXX comment
-    // XXX should be destroyed 
-    //
-
-    texture = d.texture_create(MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT);
-    assert(texture);
-
     //
     // init car_pixels ...
     //
@@ -78,9 +69,10 @@ void car::static_init(display &d)
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
-car::car(display &display, world &world, double x_arg, double y_arg, double dir_arg, double speed_arg) 
+car::car(display &display, world &world, int id_arg, double x_arg, double y_arg, double dir_arg, double speed_arg) 
     : d(display), w(world)
 {
+    id        = id_arg;  
     x         = x_arg;
     y         = y_arg;
     dir       = dir_arg;
@@ -156,68 +148,6 @@ void car::update_mechanics(double microsecs)
     }
 }
 
-// -----------------  DRAW CAR FRONT VIEW AND DASHBOARD  ----------------------------
-
-void car::draw_front_view_and_dashboard(int front_view_pid, int dashboard_pid)
-{
-    // front view
-    unsigned char front_view[MAX_FRONT_VIEW_WIDTH*MAX_FRONT_VIEW_HEIGHT];
-    w.get_view(x, y, dir, MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT, front_view);
-    d.texture_set_rect(texture, 0, 0, MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT, front_view, MAX_FRONT_VIEW_WIDTH);
-    d.texture_draw(texture, 0, 0, MAX_FRONT_VIEW_WIDTH, MAX_FRONT_VIEW_HEIGHT, front_view_pid);
-
-    // dashboard (600 x 100) ...
-
-    // current speed
-    std::ostringstream s;
-    s << speed;
-    d.text_draw(s.str(), 0.7, 1, dashboard_pid);
-
-    // steering control
-    int x;
-    d.draw_set_color(display::WHITE);
-    d.draw_rect(150,25,300,50,dashboard_pid,2);
-
-    x = 300;
-    d.draw_line(x-1, 20, x-1, 24, dashboard_pid);
-    d.draw_line(x+0, 20, x+0, 24, dashboard_pid);
-    d.draw_line(x+1, 20, x+1, 24, dashboard_pid);
-
-    d.draw_line(x-1, 75, x-1, 79, dashboard_pid);
-    d.draw_line(x+0, 75, x+0, 79, dashboard_pid);
-    d.draw_line(x+1, 75, x+1, 79, dashboard_pid);
-
-    d.draw_set_color(display::ORANGE);
-    x = 152 + (steer_ctl - MIN_STEER_CTL) / (MAX_STEER_CTL - MIN_STEER_CTL) * 296;
-    if (x < 152) x = 152;
-    if (x > 447) x = 447;
-    d.draw_line(x-1, 27, x-1, 72, dashboard_pid);
-    d.draw_line(x+0, 27, x+0, 72, dashboard_pid);
-    d.draw_line(x+1, 27, x+1, 72, dashboard_pid);
-
-    // speed control - brake
-    d.draw_set_color(display::WHITE);
-    d.draw_rect(470,0,50,100,dashboard_pid,2);
-    if (speed_ctl < 0) {
-        d.draw_set_color(display::RED);
-        int height = (speed_ctl / MIN_SPEED_CTL) * 96 + 0.5;
-        if (height < 1) height = 1;
-        if (height > 96) height = 96;
-        d.draw_filled_rect(472, 98-height, 46, height, dashboard_pid);
-    }
-
-    // speed control - gas  
-    d.draw_set_color(display::WHITE);
-    d.draw_rect(540,0,50,100,dashboard_pid,2);
-    if (speed_ctl > 0) {
-        d.draw_set_color(display::GREEN);
-        int height = (speed_ctl / MAX_SPEED_CTL) * 96 + 0.5;
-        if (height < 1) height = 1;
-        if (height > 96) height = 96;
-        d.draw_filled_rect(542, 98-height, 46, height, dashboard_pid);
-    }
-}
-
 // -----------------  PLACE CAR IN WORLD  -------------------------------------------
 
 void car::place_car_in_world()
@@ -227,4 +157,100 @@ void car::place_car_in_world()
 
     w.place_object(x, y, CAR_PIXELS_WIDTH, CAR_PIXELS_HEIGHT,
                    reinterpret_cast<unsigned char *>(car_pixels[direction]));
+}
+
+// -----------------  VIRTUAL DRAW_VIEW, DRAW_DASHBOARD, and UPDATE_CONTROLS --------
+
+void car::draw_view(int pid)
+{
+    const int MAX_VIEW_WIDTH = 150;
+    const int MAX_VIEW_HEIGHT = 390;
+    static struct display::texture * t;
+    unsigned char view[MAX_VIEW_WIDTH*MAX_VIEW_HEIGHT];
+
+    if (t == NULL) {
+        t = d.texture_create(MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
+        assert(t);
+    }
+
+    w.get_view(x, y, dir, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view);
+    d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view, MAX_VIEW_WIDTH);
+    d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
+
+    d.text_draw("front", 0, 0, pid, false, 0, 1, true);
+}
+
+void car::draw_dashboard(int pid)
+{
+    // dashboard WxH = 600x200
+    // 
+    // this function uses the upper 600x100, reserving the lower 
+    // half for derived class draw_dashboard virtual function
+
+    // draw rect around base dashboard
+    d.draw_set_color(display::WHITE);
+    d.draw_rect(0,0,590,100,pid,2);
+
+    // car id
+    std::ostringstream s;
+    s << id;
+    d.text_draw(s.str(), 0.2, 1.0, pid);
+
+    // current speed
+    s.str("");
+    s << speed;
+    d.text_draw(s.str(), 1.2, 1.0, pid);
+
+    // steering control
+    int x;
+    d.draw_set_color(display::WHITE);
+    d.draw_rect(150,25,300,50,pid,2);
+
+    x = 300;
+    d.draw_line(x-1, 20, x-1, 24, pid);
+    d.draw_line(x+0, 20, x+0, 24, pid);
+    d.draw_line(x+1, 20, x+1, 24, pid);
+
+    d.draw_line(x-1, 75, x-1, 79, pid);
+    d.draw_line(x+0, 75, x+0, 79, pid);
+    d.draw_line(x+1, 75, x+1, 79, pid);
+
+    d.draw_set_color(display::ORANGE);
+    x = 152 + (steer_ctl - MIN_STEER_CTL) / (MAX_STEER_CTL - MIN_STEER_CTL) * 296;
+    if (x < 152) x = 152;
+    if (x > 447) x = 447;
+    d.draw_line(x-1, 27, x-1, 72, pid);
+    d.draw_line(x+0, 27, x+0, 72, pid);
+    d.draw_line(x+1, 27, x+1, 72, pid);
+
+    // speed control - brake
+    const int SPEED_CONTROL_HEIGHT = 88;
+    const int SPEED_CONTROL_Y = 6;
+    const int SPEED_CONTROL_BRAKE_X = 465;
+    d.draw_set_color(display::WHITE);
+    d.draw_rect(SPEED_CONTROL_BRAKE_X,SPEED_CONTROL_Y,50,SPEED_CONTROL_HEIGHT,pid,2);
+    if (speed_ctl < 0) {
+        d.draw_set_color(display::RED);
+        int height = (speed_ctl / MIN_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
+        if (height < 1) height = 1;
+        if (height > (SPEED_CONTROL_HEIGHT-4)) height = (SPEED_CONTROL_HEIGHT-4);
+        d.draw_filled_rect(SPEED_CONTROL_BRAKE_X+2, SPEED_CONTROL_Y+(SPEED_CONTROL_HEIGHT-2)-height, 46, height, pid);
+    }
+
+    // speed control - gas  
+    const int SPEED_CONTROL_GAS_X   = 530;
+    d.draw_set_color(display::WHITE);
+    d.draw_rect(SPEED_CONTROL_GAS_X,SPEED_CONTROL_Y,50,SPEED_CONTROL_HEIGHT,pid,2);
+    if (speed_ctl > 0) {
+        d.draw_set_color(display::GREEN);
+        int height = (speed_ctl / MAX_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
+        if (height < 1) height = 1;
+        if (height > (SPEED_CONTROL_HEIGHT-4)) height = (SPEED_CONTROL_HEIGHT-4);
+        d.draw_filled_rect(SPEED_CONTROL_GAS_X+2, SPEED_CONTROL_Y+(SPEED_CONTROL_HEIGHT-2)-height, 46, height, pid);
+    }
+}
+
+void car::update_controls(double microsecs)
+{
+    // no control updates are provided in the base class
 }

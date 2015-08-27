@@ -6,7 +6,7 @@
 
 class car {
 public:
-    car(display &display, world &w, double x, double y, double dir, double speed=0);
+    car(display &display, world &w, int id, double x, double y, double dir, double speed);
     ~car();
 
     static void static_init(display &d);
@@ -19,6 +19,7 @@ public:
     const double CAR_LENGTH    = 10;    // ft   XXX wheel base
 
     world &get_world() { return w; }
+    display &get_display() { return d; }
     double get_x() { return x; }
     double get_y() { return y; }
     double get_dir() { return dir; }
@@ -31,19 +32,19 @@ public:
     void set_steer_ctl(double val);
     void set_failed() { failed = true; }
     void update_mechanics(double microsecs);
-    virtual void update_controls(double microsecs) = 0;
-
-    void draw_front_view_and_dashboard(int front_view_pid, int dashboard_pid);
     void place_car_in_world();
+
+    virtual void draw_view(int pid);
+    virtual void draw_dashboard(int pid);
+    virtual void update_controls(double microsecs);
 private:
     // support front_view display
     display &d;
     world &w;
-    static const int MAX_FRONT_VIEW_WIDTH = 101;
-    static const int MAX_FRONT_VIEW_HEIGHT = 300;
     static display::texture *texture;
 
     // car state
+    int    id;
     double x;
     double y;
     double dir;

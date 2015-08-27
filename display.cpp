@@ -98,9 +98,9 @@ display::display(int w, int h, bool resizeable)
     }
 
     const char * font0_path = "fonts/FreeMonoBold.ttf";         // normal 
-    int      font0_ptsize = win_height / 18 - 1;
-    const char * font1_path = "fonts/FreeMonoBold.ttf";         // extra large
-    int      font1_ptsize = win_height / 13 - 1;
+    int      font0_ptsize = 40; 
+    const char * font1_path = "fonts/FreeMonoBold.ttf";         // small
+    int      font1_ptsize = 20;
 
     font[0].font = TTF_OpenFont(font0_path, font0_ptsize);
     if (ret != 0) {
@@ -378,9 +378,14 @@ int display::text_draw(string str, double row, double col, int pid, bool evreg, 
     }
 
     // render the text to a surface, truncate str to at most field_cols
+#if 0
     surface = TTF_RenderText_Shaded(font[fid].font, str.substr(0,field_cols).c_str(), 
                                      evreg ? colors[LIGHT_BLUE] : colors[WHITE],
                                      colors[BLACK]);
+#else
+    surface = TTF_RenderText_Blended(font[fid].font, str.substr(0,field_cols).c_str(), 
+                                     evreg ? colors[LIGHT_BLUE] : colors[WHITE]);
+#endif
     if (surface == NULL) { 
         FATAL("TTF_RenderText_Shaded returned NULL" << endl);
     } 
@@ -391,9 +396,15 @@ int display::text_draw(string str, double row, double col, int pid, bool evreg, 
     pos.w = surface->w;
     pos.h = surface->h;
 
-    // create texture from the surface, and 
-    // render the texture
+    // create texture from the surface
     texture = SDL_CreateTextureFromSurface(renderer, surface); 
+
+    // assert that the texture has the expected pixel format
+    unsigned int fmt;
+    SDL_QueryTexture(texture, &fmt, NULL, NULL, NULL);                               
+    assert(fmt == SDL_PIXELFORMAT_ARGB8888);
+
+    // render the texture
     SDL_RenderCopy(renderer, texture, NULL, &pos); 
 
     // clean up
@@ -520,7 +531,8 @@ void display::texture_destroy(struct texture * t)
     SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(t));
 }
 
-void display::texture_draw(struct texture * t, int x, int y, int w, int h, int pid)
+// copies the texture rect to fill the entire pid pane
+void display::texture_draw1(struct texture * t, int x, int y, int w, int h, int pid)
 {
     SDL_Rect dstrect, srcrect;
     int tw, th;
@@ -584,6 +596,29 @@ void display::texture_draw(struct texture * t, int x, int y, int w, int h, int p
     srcrect.h = h;
 
     SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), &srcrect, &dstrect);
+}
+
+// copies the entire texture to pid pane rect
+void display::texture_draw2(struct texture * t, int pid, int x, int y, int w, int h)
+{
+    SDL_Rect dstrect;
+
+    if (w == 0 || h == 0) {
+        x = 0;
+        y = 0;
+        w = pane[pid].w;
+        h = pane[pid].h;
+    }
+
+    assert(x >= 0 && x+w <= pane[pid].w);
+    assert(y >= 0 && y+h <= pane[pid].h);
+
+    dstrect.x = x + pane[pid].x;
+    dstrect.y = y + pane[pid].y;
+    dstrect.w = w;
+    dstrect.h = h;
+
+    SDL_RenderCopy(renderer, reinterpret_cast<SDL_Texture*>(t), NULL, &dstrect);
 }
 
 // -----------------  EVENTS  ----------------------------------------------------------

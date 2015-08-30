@@ -133,7 +133,7 @@ int main(int argc, char **argv)
         car[max_car++] = new class car(d,w,id++,2048,2048,dir, 30);  //xxx needs id arg
     }
 #else
-    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,50);
+    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,0);
 #endif
 
     // create threads to update car controls

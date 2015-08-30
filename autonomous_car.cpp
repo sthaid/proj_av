@@ -241,5 +241,43 @@ void autonomous_car::update_controls(double microsecs)
 
     // set steering control
     set_steer_ctl(angle);
+
+    //
+    // speed control
+    //
+
+    double distance_road_is_clear;
+    double speed_target;
+    double current_speed;
+    double speed_ctl_val;
+    const double K_ACCEL = 1.5;
+    const double K_DECEL = 5.0;
+
+    distance_road_is_clear = (yo-7-min_yl) / 5280.;  // miles
+    if (distance_road_is_clear < 0) {
+        distance_road_is_clear = 0;
+    }
+
+    speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * distance_road_is_clear);   // mph
+    if (speed_target > MAX_SPEED) {
+        speed_target = MAX_SPEED;
+    }
+
+    current_speed = get_speed();
+
+    if (speed_target >= current_speed) {
+        speed_ctl_val = (speed_target - current_speed) * K_ACCEL;
+    } else {
+        speed_ctl_val = (speed_target - current_speed) * K_DECEL;
+    }
+
+    INFO("DIST " << (yo-7-min_yl) << " SPEED_TGT,CUR " << speed_target << " " << current_speed << " SPEED_CTL " << speed_ctl_val << endl);
+
+    set_speed_ctl(speed_ctl_val);
+
+
+
+// XXX clean up this code
+// XXX adjust speed based on clear distance 
 }
 

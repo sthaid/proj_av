@@ -1,5 +1,6 @@
 #include <sstream>
 #include <cassert>
+#include <iomanip>
 #include <math.h>
 #include <memory.h>
 
@@ -8,6 +9,8 @@
 #include "utils.h"
 
 using std::ostringstream;
+using std::setprecision;
+using std::fixed;
 
 unsigned char car::car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
 
@@ -198,7 +201,7 @@ void car::draw_dashboard(int pid)
 
     // current speed
     s.str("");
-    s << speed;
+    s << fixed << setprecision(0) << speed;
     d.text_draw(s.str(), 1.2, 1.0, pid);
 
     // steering control

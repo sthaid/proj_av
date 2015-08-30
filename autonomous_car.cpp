@@ -5,6 +5,9 @@
 #include "logging.h"
 #include "utils.h"
 
+const int MAX_VIEW_WIDTH = 151;
+const int MAX_VIEW_HEIGHT = 390;
+
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
 autonomous_car::autonomous_car(display &display, world &world, int id, double x, double y, double dir, double speed)
@@ -20,8 +23,6 @@ autonomous_car::~autonomous_car()
 
 void autonomous_car::draw_view(int pid)
 {
-    const int MAX_VIEW_WIDTH = 150;
-    const int MAX_VIEW_HEIGHT = 390;
     static struct display::texture * t;
     unsigned char view[MAX_VIEW_WIDTH*MAX_VIEW_HEIGHT];
     class display &d = get_display();
@@ -46,6 +47,7 @@ void autonomous_car::draw_dashboard(int pid)
     class display &d = get_display();
 
     // call base class draw_dashboard 
+    // XXX show failed in car.cpp dash
     car::draw_dashboard(pid);
 
     // draw around the autonomous dashboard
@@ -57,331 +59,187 @@ void autonomous_car::draw_dashboard(int pid)
 
 // -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
 
+// NOTES
+// - lane width   = 12 ft
+// - car width    =  7 ft
+// - car length   = 15 ft
+//
+// XXX should make the road 1 ft wider so car can be centered,
+//     as it is now:   line : 2ft rd : 7ft car : 3ft rd
+
 void autonomous_car::update_controls(double microsecs)
 {
+    const int NO_VALUE = 999999;
+
+    // XXX review this entire routine for numeric constants
+
+    // XXX supersection comments
+
+    //
     // if car has failed then return
+    //
+
     if (get_failed()) {
         return;
     }
 
+    INFO("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx\n");
+
+    //
     // get front_view, this is done to just get an idea of the processing tie
-    unsigned char fv[300][101];
+    //
+
+    unsigned char fv[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
     world &w = get_world();
-    w.get_view(get_x(), get_y(), get_dir(), 101, 300, reinterpret_cast<unsigned char *>(fv));
+    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(fv));
 
-#if 0
-    INFO("front_view " << 
-             (int)fv[299][50] << " " <<
-             (int)fv[298][50] << " " <<
-             (int)fv[297][50] << " " <<
-             (int)fv[296][50] << " " <<
-             (int)fv[295][50] << " " <<
-             (int)fv[294][50] << " " <<
-             (int)fv[293][50] << " " <<
-             (int)fv[291][50] << " " <<   // <==
-             (int)fv[291][50] << " " <<
-             (int)fv[290][50] << " " << endl);
+    //
+    // coords of the center of the car
+    //
 
-    INFO("front_view " << 
-             (int)fv[291][50] << " " <<
-             (int)fv[291][49] << " " <<
-             (int)fv[291][48] << " " <<
-             (int)fv[291][47] << " " <<
-             (int)fv[291][46] << " " <<
-             (int)fv[291][45] << " " <<
-             (int)fv[291][44] << " " <<
-             (int)fv[291][43] << " " <<
-             (int)fv[291][42] << " " << endl);
-#endif
-    INFO ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX \n");
+    int xo = MAX_VIEW_WIDTH/2;
+    int yo = MAX_VIEW_HEIGHT-1;
+    INFO("xo,yo " << xo << " " << yo << endl);
 
-#if 0
-    int Y,X;
-    for (Y = 299; Y > 260; Y--) {
-        for (X = 50; X > 30; X--) {
-            cout << (int)fv[Y][X];
-        } 
-        cout << endl;
+    //
+    // create table of the x coord of the center line, indexed by y;
+    // table entries will be skipped (for now) if there is no center line found at the y coord
+    //
+
+    double xl_tbl[1000];
+    int min_yl = NO_VALUE;
+    double xl = xo - 6;
+    double slopel = 0;
+
+    for (auto& xl_tbl_ent : xl_tbl) {
+        xl_tbl_ent = NO_VALUE;
     }
-    cout << endl;
-#endif
 
-    // NOTES
-    // - lane width   = 12 ft
-    // - car width    =  7 ft
-    // - car length   = 15 ft
+    for (int yl = yo; yl >= 0; yl--) {
+        INFO("*** YL " << yl << " XL " << xl << endl);
 
-    // front view (fv) coords of the center of the car
-    int x0 = 50; 
-    int y0 = 299;
-    INFO("x0,y0 " << x0 << " " << y0 << endl);
-
-#if 0
-    // coords of the front center of the car
-    int xf = x0;     
-    int yf = y0 - 7;
-    INFO("xf,yf " << xf << " " << yf << endl);
-#endif
-    int yf = y0;
-    int xf = x0;
-
-    // locate the yellow line by scanning to the left at the front of the car
-    #define LIMIT 15
-    int i,j;
-    j = 0;
-    for (i = 0; i < LIMIT; i++) {
-        if (fv[yf-j][xf-i] == display::YELLOW) {
+        // if xl is too close to the edge of the front view then 
+        // exit this loop
+        if (xl < 10 || xl >= MAX_VIEW_WIDTH-10) {
+            INFO("BREAK XL " << xl << endl);
             break;
         }
-    }
-    if (i == LIMIT) {
-        j = 1;
-        INFO("trying again to find yellow line "<< endl);
-        for (i = 0; i < LIMIT; i++) {
-            if (fv[yf-j][xf-i] == display::YELLOW) {
-                break;
+
+        // scan for center line at yl in xl range;
+        int xl_found_start = NO_VALUE;
+        int xl_found_end   = NO_VALUE;
+        INFO("scan " << xl-8 << " to " << xl+8 << endl);
+        for (int xl_scan = xl-8; xl_scan <= xl+8; xl_scan++) {
+            if (fv[yl][xl_scan] == display::YELLOW) {
+                if (xl_found_start == NO_VALUE) {
+                    xl_found_start = xl_scan;
+                }
+                xl_found_end = xl_scan;
             }
         }
-        if (i == LIMIT) {
-            j = 2;
-            INFO("trying yet again to find yellow line "<< endl);
-            for (i = 0; i < LIMIT; i++) {
-                if (fv[yf-j][xf-i] == display::YELLOW) {
+        INFO("xl_found_start,end = " << xl_found_start << " " << xl_found_end << endl);
+
+        // if center line is found ....
+        if (xl_found_start != NO_VALUE) {
+            // center line is found ...
+            //
+            // update center line x coord
+            xl = (double)(xl_found_start + xl_found_end) / 2;
+
+            // save center line x coord in the xl_tbl
+            xl_tbl[yl] = xl;
+            min_yl = yl;
+            INFO("xl_tbl[y] = " << xl_tbl[yl] << " min_yl = " << min_yl << endl);
+
+            // if possible, update the slope of the center line;
+            // the slope is delta-x / delta-y
+            for (int delta_y = 10; delta_y <= 12; delta_y++) {
+                if (xl_tbl[yl+delta_y] != NO_VALUE) {
+                    double delta_x = xl - xl_tbl[yl+delta_y];
+                    slopel = delta_x / delta_y;
+                    INFO("FOUND slopel = " << slopel << endl);
                     break;
                 }
             }
-            if (i == LIMIT) {
-                j = 3;
-                INFO("trying yet yet again to find yellow line "<< endl);
-                for (i = 0; i < LIMIT; i++) {
-                    if (fv[yf-j][xf-i] == display::YELLOW) {
-                        break;
-                    }
-                }
-                if (i == LIMIT) {
-                    INFO("FAILED - could not find yellow line" << endl);
-                    set_failed();  
-                    return;
-                }
+        } else {
+            // center line is not found ...
+            //
+            // update center line x coord
+            xl += slopel;
+            INFO("NOT FOUND slopel = " << slopel << endl);
+        }
+    }
+
+    //
+    // fill in missing xl_tbl entries
+    //
+
+    // search the xl_tbl alongside the car to see if center line has been found 
+    // anywhere alongside the car; fill in the centerline location alongside the car
+    // with either the value that was found or (when no value was found) with the
+    // expected centerline location
+    double value = xo - 6;;
+    for (int i = 7; i >= 0; i--) {
+        if (xl_tbl[yo-i] != NO_VALUE) {
+            value = xl_tbl[yo-i];
+            break;
+        }
+    }
+    for (int i = 7; i >= 0; i--) {
+        xl_tbl[yo-i] = value;
+    }
+    if (min_yl == NO_VALUE || min_yl > yo-7) {
+        min_yl = yo-7;
+    }
+
+    INFO("xl_tbl \n");
+    for (int yl = yo; yl >= min_yl; yl--) {
+        INFO(yl << " " << xl_tbl[yl] << endl);
+    }
+
+    // loop over the table 
+    // - check for gap too long, and
+    // - fill in gaps using linear interpolation
+    int last_valid_yl = yo;
+    for (int yl = yo-1; yl >= min_yl; yl--) {
+        int gap_length = last_valid_yl - yl - 1;
+        if (gap_length > 35) {
+            INFO("FAILED - center line gap too long" << endl);
+            set_failed();
+            return;
+        }
+
+        if (xl_tbl[yl] != NO_VALUE) {
+            for (int yl_idx = last_valid_yl-1; yl_idx > yl; yl_idx--) {
+                xl_tbl[yl_idx] = 
+                    xl_tbl[last_valid_yl] +
+                    (xl_tbl[yl] - xl_tbl[last_valid_yl]) / (last_valid_yl - yl) * (last_valid_yl - yl_idx);
             }
+            last_valid_yl = yl;
         }
     }
 
-    // coords of the the yellow line near the front of the car
-    int xy = xf-i;
-    int yy = yf;
-    INFO("xy,yy " << xy << " " << yy << endl);
+    //
+    // if there is no center line 30 feet in front of car then fail
+    //
 
-    // verify distance to yellow line is in range
-    int distance_to_yellow_line = xf - xy;
-    INFO("distance_to_yellow_line " << distance_to_yellow_line << endl);
-    if (distance_to_yellow_line < 4) {
-        INFO("FAILED - too close to yellow line " << distance_to_yellow_line << " ft" << endl);
-        set_failed();
-        return;
-    }
-    if (distance_to_yellow_line > 15) {  // XXX limit shoudl be 9
-        INFO("FAILED - too far from yellow line " << distance_to_yellow_line << " ft" << endl);
+    if (xl_tbl[yo - 7 - 30] == NO_VALUE) {
+        INFO("FAILED - no center line 30 feet up the road" << endl);
         set_failed();
         return;
     }
 
-    // locate the location of the yellow line DIST feet up the road
-    #define DIST 30
-    int xyscan = xy;
-    int yyscan = yy;
-    for (i = 0; i < DIST; i++) {
-        if (fv[yyscan-1][xyscan] == display::YELLOW) {
-            xyscan = xyscan;
-            yyscan = yyscan - 1;
-            continue;
-        }
-        if (fv[yyscan-1][xyscan-1] == display::YELLOW) {
-            xyscan = xyscan - 1;
-            yyscan = yyscan - 1;
-            continue;
-        }
-        if (fv[yyscan-1][xyscan+1] == display::YELLOW) {
-            xyscan = xyscan + 1;
-            yyscan = yyscan - 1;
-            continue;
-        }
-        if (fv[yyscan-1][xyscan-2] == display::YELLOW) {
-            xyscan = xyscan - 2;
-            yyscan = yyscan - 1;
-            continue;
-        }
-        if (fv[yyscan-1][xyscan+2] == display::YELLOW) {
-            xyscan = xyscan + 2;
-            yyscan = yyscan - 1;
-            continue;
-        }
+    //
+    // determine the angle to the location of the center line DIST feet up the road
+    //
 
-        if (fv[yyscan-2][xyscan] == display::YELLOW) {
-            xyscan = xyscan;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan-1] == display::YELLOW) {
-            xyscan = xyscan - 1;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan+1] == display::YELLOW) {
-            xyscan = xyscan + 1;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan-2] == display::YELLOW) {
-            xyscan = xyscan - 2;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan+2] == display::YELLOW) {
-            xyscan = xyscan + 2;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan-3] == display::YELLOW) {
-            xyscan = xyscan - 3;
-            yyscan = yyscan - 2;
-            continue;
-        }
-        if (fv[yyscan-2][xyscan+3] == display::YELLOW) {
-            xyscan = xyscan + 3;
-            yyscan = yyscan - 2;
-            continue;
-        }
-
-        if (fv[yyscan-3][xyscan] == display::YELLOW) {
-            xyscan = xyscan;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan-1] == display::YELLOW) {
-            xyscan = xyscan - 1;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan+1] == display::YELLOW) {
-            xyscan = xyscan + 1;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan-2] == display::YELLOW) {
-            xyscan = xyscan - 2;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan+2] == display::YELLOW) {
-            xyscan = xyscan + 2;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan-3] == display::YELLOW) {
-            xyscan = xyscan - 3;
-            yyscan = yyscan - 3;
-            continue;
-        }
-        if (fv[yyscan-3][xyscan+3] == display::YELLOW) {
-            xyscan = xyscan + 3;
-            yyscan = yyscan - 3;
-            continue;
-        }
-
-        if (fv[yyscan-4][xyscan] == display::YELLOW) {
-            xyscan = xyscan;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan-1] == display::YELLOW) {
-            xyscan = xyscan - 1;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan+1] == display::YELLOW) {
-            xyscan = xyscan + 1;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan-2] == display::YELLOW) {
-            xyscan = xyscan - 2;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan+2] == display::YELLOW) {
-            xyscan = xyscan + 2;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan-3] == display::YELLOW) {
-            xyscan = xyscan - 3;
-            yyscan = yyscan - 4;
-            continue;
-        }
-        if (fv[yyscan-4][xyscan+3] == display::YELLOW) {
-            xyscan = xyscan + 3;
-            yyscan = yyscan - 4;
-            continue;
-        }
-
-
-        INFO("FAILED - lost yellow line, last seen at " << xyscan << " " << yyscan << endl);
-        set_failed();
-        return;
-    }
-    INFO("xyscan,yyscan " << xyscan << " " << yyscan << endl);
-
-    int x2 = xyscan + 7;
-    int y2 = yyscan;
-
-    // determine the angle to the location of the yellow line DIST feet up the road
-    double angle = atan((double)(x2-xf)/-(y2-yf)) * (180./M_PI);
-    INFO("angle " << angle << endl);
+    double delta_x, delta_y, angle;
+    delta_x = xl_tbl[yo-37]+6 - MAX_VIEW_WIDTH/2;
+    delta_y = 37;
+    angle = atan(delta_x/delta_y) * (180./M_PI);
+    INFO("angle " << angle << " deltax,y " << delta_x << " " << delta_y << endl);
 
     // set steering control
     set_steer_ctl(angle);
-
-
-
-
-    //microsec_sleep(1000000);
-
-#if 0
-locate yellow line in front left of car, up to N feet away, scanning in 
-the current direction of the car
-
-if yellow line is not found then fail the car
-
-set steering and speed based on the characteristics of the yellow line
-
-check the road ahead for obstructions, including
-- other vehicle
-- stop line
-- dead end road
-and adjust speed accordingly
-
-if car has come to a stop at a stop line (only T intersecions supported)
-  if turn is not chosen then 
-    choose left or right turn at random
-    locate cross road yellow line in both directions
-  endif
-
-  if right turn and no approaching cars from the left
-    initiate right turn
-  endif
-
-  if left turn and no approaching cars from the left or right
-    initiate left turn
-  endif
-endif
-
-todo
-- display failed cars in red
-- status counters for the number of failed and good cars
-
-#endif
-    //set_steer_ctl(get_dir() < 90 ? 10 : 0);
-    //set_speed_ctl(get_speed() < 20 ? 10 : 0);
 }
 

@@ -215,7 +215,7 @@ int main(int argc, char **argv)
         int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
         int eid_run      = d.text_draw("RUN",   0, 0, PANE_PGM_CTL_ID, true, 'r');      
-        int eid_pause    = d.text_draw("PAUSE", 0, 7, PANE_PGM_CTL_ID, true, 's');      
+        int eid_pause    = d.text_draw("PAUSE", 0, 7, PANE_PGM_CTL_ID, true, 'p');      
 
         // finish, updates the display
         d.finish();

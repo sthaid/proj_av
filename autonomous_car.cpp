@@ -1,4 +1,5 @@
 #include <cassert>
+#include <iomanip>
 #include <math.h>
 
 #include "autonomous_car.h"
@@ -74,6 +75,10 @@ void autonomous_car::update_controls(double microsecs)
     // XXX review this entire routine for numeric constants
 
     // XXX supersection comments
+
+    // XXX review use of floating point
+
+    // XXX this routine is becoming too long
 
     //
     // if car has failed then return
@@ -243,22 +248,40 @@ void autonomous_car::update_controls(double microsecs)
     set_steer_ctl(angle);
 
     //
-    // speed control
+    // determine clear distance 
+    // XXX improve this
     //
 
     double distance_road_is_clear;
+    int count = 0;
+    for (int yl = yo-8; yl >= min_yl; yl--) {
+        if (fv[yl][(int)xl_tbl[yl]+6] == display::RED) {   // xxx use round
+            if (get_speed()) {
+                INFO("RED: DIST " << count << endl);
+            }
+            break;
+        }
+        count++;
+    }
+    distance_road_is_clear = (double)count / 5280.;
+
+    //
+    // speed control
+    //
+
     double speed_target;
     double current_speed;
     double speed_ctl_val;
+    double adjusted_distance_road_is_clear;
     const double K_ACCEL = 1.5;
     const double K_DECEL = 5.0;
 
-    distance_road_is_clear = (yo-7-min_yl) / 5280.;  // miles
-    if (distance_road_is_clear < 0) {
-        distance_road_is_clear = 0;
+    adjusted_distance_road_is_clear = distance_road_is_clear - 5./5280;
+    if (adjusted_distance_road_is_clear < 0) {
+        adjusted_distance_road_is_clear = 0;
     }
 
-    speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * distance_road_is_clear);   // mph
+    speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * adjusted_distance_road_is_clear);   // mph
     if (speed_target > MAX_SPEED) {
         speed_target = MAX_SPEED;
     }
@@ -271,7 +294,9 @@ void autonomous_car::update_controls(double microsecs)
         speed_ctl_val = (speed_target - current_speed) * K_DECEL;
     }
 
-    INFO("DIST " << (yo-7-min_yl) << " SPEED_TGT,CUR " << speed_target << " " << current_speed << " SPEED_CTL " << speed_ctl_val << endl);
+    if (current_speed > 0) {
+        INFO("DIST " << std::setprecision(2) << adjusted_distance_road_is_clear*5280 << " SPEED_TGT,CUR " << speed_target << " " << current_speed << " SPEED_CTL " << speed_ctl_val << endl);
+    }
 
     set_speed_ctl(speed_ctl_val);
 

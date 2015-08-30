@@ -144,7 +144,7 @@ void car::update_mechanics(double microsecs)
     
     // update car speed based on speed control 
     speed += speed_ctl * (microsecs / 1000000.);
-    if (speed < 0) {
+    if (speed < 0.2) {
         speed = 0;
     } else if (speed > MAX_SPEED) {
         speed = MAX_SPEED;

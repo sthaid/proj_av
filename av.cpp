@@ -54,7 +54,7 @@ using std::condition_variable;
 double       center_x = world::WORLD_WIDTH / 2;
 double       center_y = world::WORLD_HEIGHT / 2;
 const double ZOOM_FACTOR = 1.1892071;
-const double MAX_ZOOM    = 64.0 - .01;
+const double MAX_ZOOM    = 256.0 - .01;
 const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
 double       zoom = 1.0;
 
@@ -211,6 +211,7 @@ int main(int argc, char **argv)
         }
 
         // draw and register events
+// XXX add STEP control
         int eid_quit_win = d.event_register(display::ET_QUIT);
         int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);

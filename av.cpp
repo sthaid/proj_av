@@ -130,10 +130,11 @@ int main(int argc, char **argv)
 #if 0
     int id=0;
     for (double dir = 0; dir < 360; dir += 1) {
-        car[max_car++] = new class car(d,w,id++,2048,2048,dir, 30);  //xxx needs id arg
+        car[max_car++] = new class car(d,w,id++,2048,2048,dir, 30, 50);  //xxx needs id arg
     }
 #else
-    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,0);
+    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,0,50);
+    car[max_car++] = new class autonomous_car(d,w,1,2054,2070,0,0,20);
 #endif
 
     // create threads to update car controls

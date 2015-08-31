@@ -5,7 +5,7 @@
 
 class autonomous_car : public car {
 public:
-    autonomous_car(display &d, world &world, int id, double x, double y, double dir, double speed);
+    autonomous_car(display &d, world &world, int id, double x, double y, double dir, double speed, double max_speed);
     ~autonomous_car();
 
     virtual void draw_view(int pid);

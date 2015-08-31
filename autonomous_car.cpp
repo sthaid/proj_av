@@ -11,8 +11,8 @@ const int MAX_VIEW_HEIGHT = 390;
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
-autonomous_car::autonomous_car(display &display, world &world, int id, double x, double y, double dir, double speed)
-    : car(display,world,id,x,y,dir,speed)
+autonomous_car::autonomous_car(display &display, world &world, int id, double x, double y, double dir, double speed, double max_speed)
+    : car(display,world,id,x,y,dir,speed,max_speed)
 {
 }
 
@@ -52,6 +52,7 @@ void autonomous_car::draw_dashboard(int pid)
     car::draw_dashboard(pid);
 
     // draw around the autonomous dashboard
+    d.draw_set_color(display::WHITE);
     d.draw_rect(0,98,590,102,pid,2);
 
     // XXX autonomous dash content is tbd
@@ -59,6 +60,18 @@ void autonomous_car::draw_dashboard(int pid)
 }
 
 // -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
+
+// XXX TODO
+// - launch multiple cars, perhaps cmdline arg for the number of cars to launch
+//   - also have a launch button
+// - each car should have a slightly different max speed, choose at random when constructiong
+// - switch betwwen dashboards, 
+//   - track selected car in world view with a cursor
+// - check that cars maintain a following distance
+// - make left or right turn at stop sign
+// - wider road, and make new world
+
+
 
 // NOTES
 // - lane width   = 12 ft
@@ -250,12 +263,15 @@ void autonomous_car::update_controls(double microsecs)
     //
     // determine clear distance 
     // XXX improve this
+    // XXX maybe front view is better at the front of the car, then can chenge the 10 below to 0
     //
 
     double distance_road_is_clear;
     int count = 0;
-    for (int yl = yo-8; yl >= min_yl; yl--) {
-        if (fv[yl][(int)xl_tbl[yl]+6] == display::RED) {   // xxx use round
+    for (int yl = yo-10; yl >= min_yl; yl--) {
+        if (fv[yl][(int)xl_tbl[yl]+6] == display::RED ||   // xxx use round
+            fv[yl][(int)xl_tbl[yl]+6] == display::BLUE) 
+        {
             if (get_speed()) {
                 INFO("RED: DIST " << count << endl);
             }
@@ -282,8 +298,8 @@ void autonomous_car::update_controls(double microsecs)
     }
 
     speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * adjusted_distance_road_is_clear);   // mph
-    if (speed_target > MAX_SPEED) {
-        speed_target = MAX_SPEED;
+    if (speed_target > get_max_speed()) {
+        speed_target = get_max_speed();
     }
 
     current_speed = get_speed();

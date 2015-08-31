@@ -6,7 +6,7 @@
 
 class car {
 public:
-    car(display &display, world &w, int id, double x, double y, double dir, double speed);
+    car(display &display, world &w, int id, double x, double y, double dir, double speed, double max_speed);
     ~car();
 
     static void static_init(display &d);
@@ -15,8 +15,7 @@ public:
     const double MIN_STEER_CTL = -45;   // degrees
     const double MAX_SPEED_CTL = 10;    // mph/sec
     const double MIN_SPEED_CTL = -30;   // mph/sec
-    const double MAX_SPEED     = 50;    // mph
-    const double CAR_LENGTH    = 10;    // ft   XXX wheel base
+    const double CAR_LENGTH    = 10;    // ft   XXX wheel base  PRIVATE
 
     world &get_world() { return w; }
     display &get_display() { return d; }
@@ -24,6 +23,7 @@ public:
     double get_y() { return y; }
     double get_dir() { return dir; }
     double get_speed() { return speed; }
+    double get_max_speed() { return max_speed; }
     double get_speed_ctl() { return speed_ctl; }
     double get_steer_ctl() { return steer_ctl; }
     bool get_failed() { return failed; };
@@ -49,6 +49,7 @@ private:
     double y;
     double dir;
     double speed;
+    double max_speed;
     double speed_ctl;
     double steer_ctl;
     bool   failed;

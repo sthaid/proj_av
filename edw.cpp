@@ -144,7 +144,7 @@ int main(int argc, char **argv)
         // draw world 
         w.place_object_init();
         if (mode == CREATE_ROADS) {
-            car car(d, w, 0, create_road_x, create_road_y, create_road_dir, 0);
+            car car(d, w, 0, create_road_x, create_road_y, create_road_dir, 0, 0);
             car.place_car_in_world();
         }
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);

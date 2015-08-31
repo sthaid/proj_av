@@ -72,7 +72,7 @@ void car::static_init(display &d)
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
-car::car(display &display, world &world, int id_arg, double x_arg, double y_arg, double dir_arg, double speed_arg) 
+car::car(display &display, world &world, int id_arg, double x_arg, double y_arg, double dir_arg, double speed_arg, double max_speed_arg) 
     : d(display), w(world)
 {
     id        = id_arg;  
@@ -80,6 +80,7 @@ car::car(display &display, world &world, int id_arg, double x_arg, double y_arg,
     y         = y_arg;
     dir       = dir_arg;
     speed     = speed_arg;
+    max_speed = max_speed_arg;
     speed_ctl = 0;
     steer_ctl = 0;
     failed    = false;
@@ -146,8 +147,8 @@ void car::update_mechanics(double microsecs)
     speed += speed_ctl * (microsecs / 1000000.);
     if (speed < 0.2) {
         speed = 0;
-    } else if (speed > MAX_SPEED) {
-        speed = MAX_SPEED;
+    } else if (speed > max_speed) {
+        speed = max_speed;
     }
 }
 

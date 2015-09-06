@@ -30,14 +30,14 @@ void car::static_init(display &d)
             car[h][w] = display::BLUE;
         }
     }
-    car[15][5]  = display::RED;   // tail lights
-    car[15][6]  = display::RED;
-    car[15][10] = display::RED;
-    car[15][11] = display::RED;
-    car[14][5]  = display::RED;
-    car[14][6]  = display::RED;
-    car[14][10] = display::RED;
-    car[14][11] = display::RED;
+    car[15][5]  = display::ORANGE;   // tail lights
+    car[15][6]  = display::ORANGE;
+    car[15][10] = display::ORANGE;
+    car[15][11] = display::ORANGE;
+    car[14][5]  = display::ORANGE;
+    car[14][6]  = display::ORANGE;
+    car[14][10] = display::ORANGE;
+    car[14][11] = display::ORANGE;
     car[1][5]   = display::WHITE; // head lights
     car[1][6]   = display::WHITE;
     car[1][10]  = display::WHITE;
@@ -96,6 +96,10 @@ car::~car()
 
 void car::set_steer_ctl(double val) 
 {
+    if (get_failed()) {
+        return;
+    }
+
     if (val > MAX_STEER_CTL) {
         steer_ctl = MAX_STEER_CTL;
     } else if (val < MIN_STEER_CTL) {
@@ -107,6 +111,10 @@ void car::set_steer_ctl(double val)
 
 void car::set_speed_ctl(double val) 
 {
+    if (get_failed()) {
+        return;
+    }
+
     if (speed_ctl > MAX_SPEED_CTL) {
         speed_ctl = MAX_SPEED_CTL;
     } else if (speed_ctl < MIN_SPEED_CTL) {
@@ -133,6 +141,11 @@ void car::update_mechanics(double microsecs)
     // XXX check for crash due to 
     // - over steering
     // - taking a turn at too high speed
+
+    // if car has failed then do nothing
+    if (get_failed()) {
+        return;
+    }
 
     // update car position based on current direction and speed
     distance = speed * microsecs * (5280./3600./1e6);

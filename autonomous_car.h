@@ -13,6 +13,18 @@ public:
     virtual void update_controls(double microsecs);
 
 private:
+    static const int MAX_VIEW_WIDTH = 151;
+    static const int MAX_VIEW_HEIGHT = 390;
+    static const int xo = MAX_VIEW_WIDTH/2;
+    static const int yo = MAX_VIEW_HEIGHT-1;
+    typedef unsigned char (view_t)[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
+
+    bool stopped_at_stop_sign(view_t &view);
+    void scan_road(view_t & view, int &max_x_line, double (&x_line)[MAX_VIEW_HEIGHT]);
+    double scan_for_center_line(view_t &view, int y, double x_double);
+    void set_car_controls(int max_x_line, double (&x_line)[MAX_VIEW_HEIGHT]);
+
+    int distance_road_is_clear;
 };
 
 #endif

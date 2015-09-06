@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "utils.h"
+#include "logging.h"
 
 void microsec_sleep(long us)
 {

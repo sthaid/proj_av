@@ -420,7 +420,7 @@ void create_road_slice(class world &w, double x, double y, double dir)
 
     tmpx = x;
     tmpy = y;
-    for (int i = 1; i <= 24; i++) {
+    for (int i = 1; i <= 26; i++) {
         tmpx += dpx;
         tmpy += dpy;
         if (w.get_pixel(tmpx,tmpy) == display::GREEN) {
@@ -430,7 +430,7 @@ void create_road_slice(class world &w, double x, double y, double dir)
 
     tmpx = x;
     tmpy = y;
-    for (int i = 1; i <= 24; i++) {
+    for (int i = 1; i <= 26; i++) {
         tmpx -= dpx;
         tmpy -= dpy;
         if (w.get_pixel(tmpx,tmpy) == display::GREEN) {

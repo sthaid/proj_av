@@ -1,19 +1,20 @@
 #include <cassert>
 #include <iomanip>
-#include <math.h>
+#include <cmath>  // xxx check other includes in other files
+#include <sstream>
 
 #include "autonomous_car.h"
 #include "logging.h"
 #include "utils.h"
 
-const int MAX_VIEW_WIDTH = 151;
-const int MAX_VIEW_HEIGHT = 390;
+using std::ostringstream;
 
 // -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
 autonomous_car::autonomous_car(display &display, world &world, int id, double x, double y, double dir, double speed, double max_speed)
     : car(display,world,id,x,y,dir,speed,max_speed)
 {
+    distance_road_is_clear = 0;  // xxx use NO_VALUE
 }
 
 autonomous_car::~autonomous_car()
@@ -25,7 +26,7 @@ autonomous_car::~autonomous_car()
 void autonomous_car::draw_view(int pid)
 {
     static struct display::texture * t;
-    unsigned char view[MAX_VIEW_WIDTH*MAX_VIEW_HEIGHT];
+    view_t view;
     class display &d = get_display();
     class world &w = get_world();
 
@@ -34,8 +35,8 @@ void autonomous_car::draw_view(int pid)
         assert(t);
     }
 
-    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view);
-    d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view, MAX_VIEW_WIDTH);
+    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view));
+    d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view), MAX_VIEW_WIDTH);
     d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
 
     d.text_draw("FRONT", 0, 0, pid, false, 0, 1, true);
@@ -43,248 +44,309 @@ void autonomous_car::draw_view(int pid)
 
 // -----------------  DRAW DASHBOARD VIRTUAL FUNCTION  -----------------------------
 
-void autonomous_car::draw_dashboard(int pid)
+void autonomous_car::draw_dashboard(int pid)  // xxx make seperate pid
 {
     class display &d = get_display();
 
     // call base class draw_dashboard 
-    // XXX show failed in car.cpp dash
+    // xxx show failed in car.cpp dash
     car::draw_dashboard(pid);
 
     // draw around the autonomous dashboard
     d.draw_set_color(display::WHITE);
     d.draw_rect(0,98,590,102,pid,2);
 
-    // XXX autonomous dash content is tbd
-    d.text_draw("AUTONOMOUS DASH", 3.0, 0, pid, false, 0, 0, true);
+    // xxx autonomous dash content is tbd
+    // - add things like the distance road is clear, stopped at sign
+    // xxx d.text_draw("AUTONOMOUS DASH", 3.0, 0, pid, false, 0, 0, true);
+
+    double base_row = 3.3;
+    std::ostringstream s;
+    s << "ROAD CLR " << distance_road_is_clear;
+    d.text_draw(s.str(), base_row+0, 1, pid, false, 0, 1);
+    // xxx d.text_draw(s.str(), base_row+1, 1, pid, false, 0, 1);
+    // xxx d.text_draw(s.str(), base_row+2, 1, pid, false, 0, 1);
 }
 
 // -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
 
-// XXX TODO
-// - launch multiple cars, perhaps cmdline arg for the number of cars to launch
-//   - also have a launch button
-// - each car should have a slightly different max speed, choose at random when constructiong
-// - switch betwwen dashboards, 
-//   - track selected car in world view with a cursor
-// - check that cars maintain a following distance
-// - make left or right turn at stop sign
-// - wider road, and make new world
-
-
-
-// NOTES
-// - lane width   = 12 ft
-// - car width    =  7 ft
-// - car length   = 15 ft
-//
-// XXX should make the road 1 ft wider so car can be centered,
-//     as it is now:   line : 2ft rd : 7ft car : 3ft rd
+const int NO_VALUE = 9999999;
 
 void autonomous_car::update_controls(double microsecs)
 {
-    const int NO_VALUE = 999999;
+    view_t view;
 
-    // XXX review this entire routine for numeric constants
-
-    // XXX supersection comments
-
-    // XXX review use of floating point
-
-    // XXX this routine is becoming too long
-
-    //
-    // if car has failed then return
-    //
-
+    // if failed do nothing
     if (get_failed()) {
         return;
     }
 
-    INFO("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXx\n");
+    INFO("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 
-    //
-    // get front_view, this is done to just get an idea of the processing tie
-    //
-
-    unsigned char fv[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
+    // get the front view
     world &w = get_world();
-    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(fv));
+    w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view));
 
-    //
-    // coords of the center of the car
-    //
-
-    int xo = MAX_VIEW_WIDTH/2;
-    int yo = MAX_VIEW_HEIGHT-1;
-    INFO("xo,yo " << xo << " " << yo << endl);
-
-    //
-    // create table of the x coord of the center line, indexed by y;
-    // table entries will be skipped (for now) if there is no center line found at the y coord
-    //
-
-    double xl_tbl[1000];
-    int min_yl = NO_VALUE;
-    double xl = xo - 6;
-    double slopel = 0;
-
-    for (auto& xl_tbl_ent : xl_tbl) {
-        xl_tbl_ent = NO_VALUE;
-    }
-
-    for (int yl = yo; yl >= 0; yl--) {
-        INFO("*** YL " << yl << " XL " << xl << endl);
-
-        // if xl is too close to the edge of the front view then 
-        // exit this loop
-        if (xl < 10 || xl >= MAX_VIEW_WIDTH-10) {
-            INFO("BREAK XL " << xl << endl);
-            break;
+    // xxx clear first
+    for (int x_idx = xo-5; x_idx <= xo+5; x_idx++) {
+        if (view[yo-8][x_idx] == display::WHITE) {
+            INFO("CLEARING WHITE at y,x= " << yo-8 << " " << x_idx << endl);
+            view[yo-8][x_idx] = display::BLACK;    
         }
-
-        // scan for center line at yl in xl range;
-        int xl_found_start = NO_VALUE;
-        int xl_found_end   = NO_VALUE;
-        INFO("scan " << xl-8 << " to " << xl+8 << endl);
-        for (int xl_scan = xl-8; xl_scan <= xl+8; xl_scan++) {
-            if (fv[yl][xl_scan] == display::YELLOW) {
-                if (xl_found_start == NO_VALUE) {
-                    xl_found_start = xl_scan;
-                }
-                xl_found_end = xl_scan;
-            }
-        }
-        INFO("xl_found_start,end = " << xl_found_start << " " << xl_found_end << endl);
-
-        // if center line is found ....
-        if (xl_found_start != NO_VALUE) {
-            // center line is found ...
-            //
-            // update center line x coord
-            xl = (double)(xl_found_start + xl_found_end) / 2;
-
-            // save center line x coord in the xl_tbl
-            xl_tbl[yl] = xl;
-            min_yl = yl;
-            INFO("xl_tbl[y] = " << xl_tbl[yl] << " min_yl = " << min_yl << endl);
-
-            // if possible, update the slope of the center line;
-            // the slope is delta-x / delta-y
-            for (int delta_y = 10; delta_y <= 12; delta_y++) {
-                if (xl_tbl[yl+delta_y] != NO_VALUE) {
-                    double delta_x = xl - xl_tbl[yl+delta_y];
-                    slopel = delta_x / delta_y;
-                    INFO("FOUND slopel = " << slopel << endl);
-                    break;
-                }
-            }
-        } else {
-            // center line is not found ...
-            //
-            // update center line x coord
-            xl += slopel;
-            INFO("NOT FOUND slopel = " << slopel << endl);
+        if (view[yo-8][x_idx] == display::BLUE) {
+            INFO("CLEARING BLUE at y,x= " << yo-8 << " " << x_idx << endl);
+            view[yo-8][x_idx] = display::BLACK;    
         }
     }
 
-    //
-    // fill in missing xl_tbl entries
-    //
-
-    // search the xl_tbl alongside the car to see if center line has been found 
-    // anywhere alongside the car; fill in the centerline location alongside the car
-    // with either the value that was found or (when no value was found) with the
-    // expected centerline location
-    double value = xo - 6;;
-    for (int i = 7; i >= 0; i--) {
-        if (xl_tbl[yo-i] != NO_VALUE) {
-            value = xl_tbl[yo-i];
-            break;
+    for (int x_idx = xo-5; x_idx <= xo+5; x_idx++) {
+        if (view[yo-9][x_idx] == display::WHITE) {
+            INFO("2 ** CLEARING WHITE at y,x= " << yo-9 << " " << x_idx << endl);
+            view[yo-9][x_idx] = display::BLACK;    
+        }
+        if (view[yo-9][x_idx] == display::BLUE) {
+            INFO("2 ** CLEARING BLUE at y,x= " << yo-9 << " " << x_idx << endl);
+            view[yo-9][x_idx] = display::BLACK;    
         }
     }
-    for (int i = 7; i >= 0; i--) {
-        xl_tbl[yo-i] = value;
-    }
-    if (min_yl == NO_VALUE || min_yl > yo-7) {
-        min_yl = yo-7;
-    }
+            
+    // convert gap world coords to view coords,
+    // if front of car is beyond the gap then clear gap
+    // xxx gap is tbd
 
-    INFO("xl_tbl \n");
-    for (int yl = yo; yl >= min_yl; yl--) {
-        INFO(yl << " " << xl_tbl[yl] << endl);
-    }
+    // processing based on state of car
+    if (stopped_at_stop_sign(view)) {
+        INFO("stopped at stop sign\n");
+        set_failed();
+#if 0  // xxx later
+        // car is stopped at stop sign ...
 
-    // loop over the table 
-    // - check for gap too long, and
-    // - fill in gaps using linear interpolation
-    int last_valid_yl = yo;
-    for (int yl = yo-1; yl >= min_yl; yl--) {
-        int gap_length = last_valid_yl - yl - 1;
-        if (gap_length > 35) {
-            INFO("FAILED - center line gap too long" << endl);
+        // search for center lines
+        search_for_center_lines(center_line);
+        
+        // if no center lines found then fail car
+        if (!center_line[0].exists && !center_line[1].exists && !center_line[2].exists) {
             set_failed();
             return;
         }
 
-        if (xl_tbl[yl] != NO_VALUE) {
-            for (int yl_idx = last_valid_yl-1; yl_idx > yl; yl_idx--) {
-                xl_tbl[yl_idx] = 
-                    xl_tbl[last_valid_yl] +
-                    (xl_tbl[yl] - xl_tbl[last_valid_yl]) / (last_valid_yl - yl) * (last_valid_yl - yl_idx);
+        // pick a direction at random
+        while (true) {
+            static std::default_random_engine generator(microsec_timer();
+            static std::uniform_int_distribution<int> choice(0,2);
+            if (center_lines[choice(generator)].exists) {
+                break;
             }
-            last_valid_yl = yl;
+        }
+
+        // set gap target to the begining of the chosen center line
+        gap_target = center_lines[choice].begining;
+        
+        // set go_from_stop_sign
+        go_from_stop_sign = xxx;
+#endif
+    } else {
+        // car is not stopped at stop sign  ...
+
+        // call scan_road to determine the center line for which the road is clear
+        // xxx use vector
+        int max_x_line;
+        double x_line[MAX_VIEW_HEIGHT];
+        scan_road(view, max_x_line, x_line);
+        INFO("scan_road return: max_x_line " << max_x_line << " : ");
+        for (int i = 0; i < max_x_line; i++) {
+            cout << x_line[i] << " ";
+        }
+        cout << endl;
+
+        // save distance road is clear for display on dashboard
+        distance_road_is_clear = max_x_line;
+
+        // if distance road is clear is 0 then fail car
+        if (max_x_line == 0) {
+            INFO("setting failed max_x_line 0\n");
+            set_failed();  // xxx reason string?, and display on dashboard for base class
+        }
+
+        // set car steering and speed controls
+        set_car_controls(max_x_line, x_line);
+    }
+}
+
+bool autonomous_car::stopped_at_stop_sign(view_t &view)
+{
+    // if speed not zero return false
+    if (get_speed() > 0) {
+        return false;
+    }
+
+    // return true if stop line found neear front of car
+    // xxx currently usng 5 feet  (12-8+1), tighten this up
+    for (int y = yo-8; y >= yo-12; y--) {
+        for (int x = xo+6; x >= xo-6; x--) {
+            if (view[y][x] == display::YELLOW) {
+                break;
+            }
+            if (view[y][x] == display::RED) {
+                return true;
+            }
         }
     }
 
-    //
-    // if there is no center line 30 feet in front of car then fail
-    //
+    // stop line not found
+    return false;
+}
 
-    if (xl_tbl[yo - 7 - 30] == NO_VALUE) {
-        INFO("FAILED - no center line 30 feet up the road" << endl);
-        set_failed();
-        return;
-    }
+void autonomous_car::scan_road(view_t &view, int &max_x_line, double (&x_line)[MAX_VIEW_HEIGHT]) 
+{
+    int    y;
+    int    minigap_y_end;
+    double minigap_slope;
+    
+    // init
+    max_x_line = 0;
+    y = yo - 8;  // in front of car
+    minigap_y_end = NO_VALUE;
+    minigap_slope = 0;
 
-    //
-    // determine the angle to the location of the center line DIST feet up the road
-    //
+    // this loop determines the x location of the center line, 
+    while (true) {
+        double slope, x_last, x;
 
-    double delta_x, delta_y, angle;
-    delta_x = xl_tbl[yo-37]+6 - MAX_VIEW_WIDTH/2;
-    delta_y = 37;
-    angle = atan(delta_x/delta_y) * (180./M_PI);
-    INFO("angle " << angle << " deltax,y " << delta_x << " " << delta_y << endl);
-
-    // set steering control
-    set_steer_ctl(angle);
-
-    //
-    // determine clear distance 
-    // XXX improve this
-    // XXX maybe front view is better at the front of the car, then can chenge the 10 below to 0
-    //
-
-    double distance_road_is_clear;
-    int count = 0;
-    for (int yl = yo-10; yl >= min_yl; yl--) {
-        if (fv[yl][(int)xl_tbl[yl]+6] == display::RED ||   // xxx use round
-            fv[yl][(int)xl_tbl[yl]+6] == display::BLUE) 
-        {
-            if (get_speed()) {
-                INFO("RED: DIST " << count << endl);
-            }
-            break;
+        // determine the slope of the center line over the past 10 feet,
+        // if that much has not yet been scanned then set slope to 0
+        if (max_x_line > 10) {
+            slope = (x_line[max_x_line-1] - x_line[max_x_line-(1+10)]) / 10;
+        } else {
+            slope = 0;
         }
-        count++;
-    }
-    distance_road_is_clear = (double)count / 5280.;
 
-    //
+        // determine the last x location of center line, 
+        // if none yet then use expected
+        if (max_x_line > 0) {
+            x_last = x_line[max_x_line-1];
+        } else {
+            x_last = xo - 7;
+        }
+        INFO("y " << y << " x_last " << x_last << " slope " << slope << endl);
+
+        // if y is in mini gap then
+        //   determine x line location based on mini gap slope
+        // else if y is in a gap then
+        //   determine x line location based on xxx
+        // else
+        //   determine x line location based on scanning for the center line
+        // endif
+        if (minigap_y_end != NO_VALUE) {
+            x = x_last + minigap_slope;
+            if (minigap_y_end == y) {
+                minigap_y_end = NO_VALUE;
+            }
+            INFO("minigap x " << x << endl);
+        } else if (false) {
+            x = NO_VALUE; // xxx
+        } else {
+            x = scan_for_center_line(view, y, x_last+slope);
+            INFO("scan_for_center_line x " << x << endl);
+        }
+
+        // check if above code has determined location of center line, at y
+        if (x != NO_VALUE) {
+            // check for loop termination based on x,y,slope at limit
+            if (y < 0 ||
+                x < 0 || x > MAX_VIEW_WIDTH-20 ||
+                abs(slope) > 1) 
+            {
+                INFO("term y,x,slope " << y << " " << x << " " << slope << endl);
+                break;
+            }
+
+            // check for loop termination based on road not clear 
+            // xxx should scan across for 13*sqrt(1+slope^2)
+            // XXX might hit a green, maybe just lower the 13
+            bool road_not_clear = false;
+            int x_idx;  // xxx put decl back in loop
+            for (x_idx = x; x_idx < x+13; x_idx++) {
+                if (view[y][x_idx] != display::YELLOW && view[y][x_idx] != display::BLACK) {
+                    road_not_clear = true;
+                    break;
+                }
+            }
+            if (road_not_clear) {
+                INFO("road not clear, x_idx " << x_idx << " color " << (int)view[y][x_idx] << endl);
+                break;
+            }
+
+            // add location of center_line to x_line array
+            INFO("saving x_line[" << max_x_line << "] = " << x << endl);
+            x_line[max_x_line++] = x;
+            y--;
+
+            // continue
+            continue;
+        }
+
+        // check for mini gap by trying to locate center line at next several values of y;
+        // note that center line can either be found in the view or found in start of a full gap
+        // if found then
+        //   set mini gap variables
+        //   continue
+        // endif
+        INFO("checking for minigap at y " << y << endl);
+        for (int y_idx = y-1; y_idx >= y-3; y_idx--) {
+            double x_scl = scan_for_center_line(view, y_idx, x_last + (y - y_idx) * slope);
+            if (x_scl != NO_VALUE) {
+                minigap_y_end = y_idx+1;
+                minigap_slope = (x_scl - x_last) / (y - y_idx);
+            }
+        }
+        if (minigap_y_end != NO_VALUE) {
+            INFO("found minigap_y_end " << minigap_y_end << " minigap_slope " << minigap_slope << endl);
+            continue;
+        }
+
+        // xxx check for full gap
+
+        // at this y we have not found a center line, minigap of full gap;
+        // so we're done
+        INFO("done because no value or gap\n");
+        break;
+    }
+}
+
+double autonomous_car::scan_for_center_line(view_t &view, int y, double x_double)
+{
+    int x = round(x_double);
+    int x_found_start = NO_VALUE;
+    int x_found_end   = NO_VALUE;
+
+    if (y < 0 || x-5 < 0 || x+5 >= MAX_VIEW_WIDTH) {
+        return NO_VALUE;
+    }
+
+    for (int x_idx = x-5; x_idx <= x+5; x_idx++) {
+        if (view[y][x_idx] == display::YELLOW) {
+            if (x_found_start == NO_VALUE) {
+                x_found_start = x_idx;
+            }
+            x_found_end = x_idx;
+        }
+    }
+
+    return (x_found_start == NO_VALUE ? NO_VALUE : (double)(x_found_start + x_found_end) / 2);
+}
+
+void autonomous_car::set_car_controls(int max_x_line, double (&x_line)[MAX_VIEW_HEIGHT])
+{
+    // steering control
+    const int STEER_TARGET = 20;  // distance up the road
+    double steer_direction;
+
+    steer_direction = atan((x_line[STEER_TARGET] + 7 - xo) / STEER_TARGET) * (180./M_PI);
+    set_steer_ctl(steer_direction);
+    INFO("set_car_control steer_dir " << steer_direction << endl);
+
     // speed control
-    //
-
     double speed_target;
     double current_speed;
     double speed_ctl_val;
@@ -292,17 +354,19 @@ void autonomous_car::update_controls(double microsecs)
     const double K_ACCEL = 1.5;
     const double K_DECEL = 5.0;
 
-    adjusted_distance_road_is_clear = distance_road_is_clear - 5./5280;
+    adjusted_distance_road_is_clear = (double)(max_x_line-5) / 5280;
     if (adjusted_distance_road_is_clear < 0) {
         adjusted_distance_road_is_clear = 0;
     }
 
+    // xxx comment this
     speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * adjusted_distance_road_is_clear);   // mph
     if (speed_target > get_max_speed()) {
         speed_target = get_max_speed();
     }
 
     current_speed = get_speed();
+    INFO("set_car_control speed_target " << speed_target << " current_speed " << current_speed << endl);
 
     if (speed_target >= current_speed) {
         speed_ctl_val = (speed_target - current_speed) * K_ACCEL;
@@ -310,15 +374,7 @@ void autonomous_car::update_controls(double microsecs)
         speed_ctl_val = (speed_target - current_speed) * K_DECEL;
     }
 
-    if (current_speed > 0) {
-        INFO("DIST " << std::setprecision(2) << adjusted_distance_road_is_clear*5280 << " SPEED_TGT,CUR " << speed_target << " " << current_speed << " SPEED_CTL " << speed_ctl_val << endl);
-    }
-
     set_speed_ctl(speed_ctl_val);
-
-
-
-// XXX clean up this code
-// XXX adjust speed based on clear distance 
+    INFO("set_car_control speed_ctl_val " << speed_ctl_val << endl);
 }
 

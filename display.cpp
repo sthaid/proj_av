@@ -100,7 +100,7 @@ display::display(int w, int h, bool resizeable)
     const char * font0_path = "fonts/FreeMonoBold.ttf";         // normal 
     int      font0_ptsize = 40; 
     const char * font1_path = "fonts/FreeMonoBold.ttf";         // small
-    int      font1_ptsize = 20;
+    int      font1_ptsize = 30;
 
     font[0].font = TTF_OpenFont(font0_path, font0_ptsize);
     if (ret != 0) {

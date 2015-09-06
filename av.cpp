@@ -2,6 +2,7 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
+#include <random>
 #include <unistd.h>
 #include <string.h>
 
@@ -70,6 +71,7 @@ int       message_time_us = MAX_MESSAGE_TIME_US;
 const int     MAX_CAR = 1000;
 class car   * car[MAX_CAR];
 int           max_car = 0;
+void launch_new_car(display &d, world &w);
 
 // update car controls threads
 const int          MAX_CAR_UPDATE_CONTROLS_THREAD = 10;
@@ -125,17 +127,6 @@ int main(int argc, char **argv)
     world w(d);
     bool success = w.read(filename);
     display_message(success ? "READ SUCCESS" : "READ FAILURE");
-
-    // create cars
-#if 0
-    int id=0;
-    for (double dir = 0; dir < 360; dir += 1) {
-        car[max_car++] = new class car(d,w,id++,2048,2048,dir, 30, 50);  //xxx needs id arg
-    }
-#else
-    car[max_car++] = new class autonomous_car(d,w,0,2054,2048,0,0,50);
-    car[max_car++] = new class autonomous_car(d,w,1,2054,2070,0,0,20);
-#endif
 
     // create threads to update car controls
     car_update_controls_idx = max_car;
@@ -202,8 +193,11 @@ int main(int argc, char **argv)
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 
         // draw car front view and dashboard
-        car[0]->draw_view(PANE_CAR_VIEW_ID);
-        car[0]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
+        // XXX
+        if (max_car > 0) {
+            car[0]->draw_view(PANE_CAR_VIEW_ID);
+            car[0]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
+        }
 
         // draw the message box
         if (message_time_us < MAX_MESSAGE_TIME_US) {
@@ -216,8 +210,9 @@ int main(int argc, char **argv)
         int eid_quit_win = d.event_register(display::ET_QUIT);
         int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run      = d.text_draw("RUN",   0, 0, PANE_PGM_CTL_ID, true, 'r');      
-        int eid_pause    = d.text_draw("PAUSE", 0, 7, PANE_PGM_CTL_ID, true, 'p');      
+        int eid_run      = d.text_draw("RUN",    0, 0,  PANE_PGM_CTL_ID, true, 'r');      
+        int eid_pause    = d.text_draw("PAUSE",  0, 7,  PANE_PGM_CTL_ID, true, 'p');      
+        int eid_launch   = d.text_draw("LAUNCH", 0, 14, PANE_PGM_CTL_ID, true, 'l');      
 
         // finish, updates the display
         d.finish();
@@ -226,9 +221,11 @@ int main(int argc, char **argv)
         // SET MODE TO PAUSE IF CAR[0] HAS FAILED XXX TEMP
         // 
 
-        if (car[0]->get_failed() && mode != PAUSE) {
-            INFO(" *** PAUSING ***\n");
-            mode = PAUSE;
+        for (int i = 0; i < max_car; i++) {
+            if (car[i]->get_failed() && mode != PAUSE) {
+                INFO(" *** PAUSING CAR " << i << " FAILED ***\n");
+                mode = PAUSE;
+            }
         }
 
         //
@@ -266,6 +263,10 @@ int main(int argc, char **argv)
                 mode = PAUSE;
                 break;
             }
+            if (event.eid == eid_launch) {
+                launch_new_car(d,w);
+                break;
+            }
         } while(0);
 
         //
@@ -298,6 +299,38 @@ int main(int argc, char **argv)
     }
 
     return 0;
+}
+
+// -----------------  LAUNCH NEW CAR  --------------------------------------------------------------
+
+void launch_new_car(display &d, world &w)
+{
+    static std::default_random_engine generator(microsec_timer());  // XXX test this
+    static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
+#if 0
+    static bool first_call = true;
+
+    // seed the random number generator on first call
+    if (first_call) {
+        generator.seed(microsec_timer());
+        first_call = false;
+    }
+#endif
+
+    // check that launch spot is clear
+    // XXX 
+
+    // choose the car's max_speed at random, in range 30 to 50 mph
+#if 0
+    int max_speed = random_uniform_30_to_50(generator);
+#else
+    int max_speed = 39;
+#endif
+    INFO("MAX SPEED " << max_speed << endl);
+
+    // create the car
+    int id = max_car;
+    car[max_car++] = new class autonomous_car(d,w,id,2055,2048,0,0,max_speed);
 }
 
 // -----------------  CAR UPDATE CONTROLS THREAD----------------------------------------------------

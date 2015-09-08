@@ -15,6 +15,7 @@ autonomous_car::autonomous_car(display &display, world &world, int id, double x,
     : car(display,world,id,x,y,dir,speed,max_speed)
 {
     distance_road_is_clear = 0;  // xxx use NO_VALUE
+    state = READY;
 }
 
 autonomous_car::~autonomous_car()
@@ -62,11 +63,13 @@ void autonomous_car::draw_dashboard(int pid)  // xxx make seperate pid
 
     double base_row = 3.3;
     std::ostringstream s;
+
+    d.text_draw(state_string(), base_row+0, 1, pid, false, 0, 1);
+    
     s << "ROAD CLR " << distance_road_is_clear;
-    d.text_draw(s.str(), base_row+0, 1, pid, false, 0, 1);
-    // xxx d.text_draw(s.str(), base_row+1, 1, pid, false, 0, 1);
-    // xxx d.text_draw(s.str(), base_row+2, 1, pid, false, 0, 1);
+    d.text_draw(s.str(), base_row+1, 1, pid, false, 0, 1);
 }
+
 
 // -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
 
@@ -116,8 +119,11 @@ void autonomous_car::update_controls(double microsecs)
 
     // processing based on state of car
     if (stopped_at_stop_sign(view)) {
+        // set state
+        state = STOPPED_AT_STOP_LINE;
+
         INFO("stopped at stop sign\n");
-        set_failed();
+        //xxx set_failed();
 #if 0  // xxx later
         // car is stopped at stop sign ...
 
@@ -163,6 +169,7 @@ void autonomous_car::update_controls(double microsecs)
         distance_road_is_clear = max_x_line;
 
         // if distance road is clear is 0 then fail car
+        // xxx integrate this with state
         if (max_x_line == 0) {
             INFO("setting failed max_x_line 0\n");
             set_failed();  // xxx reason string?, and display on dashboard for base class
@@ -170,6 +177,10 @@ void autonomous_car::update_controls(double microsecs)
 
         // set car steering and speed controls
         set_car_controls(max_x_line, x_line);
+
+        // set state
+        // xxx need APPROACHING_STOP_LINE and FAILED
+        state = get_speed() > 0 ? TRAVELLING : STOPPED;
     }
 }
 
@@ -376,5 +387,27 @@ void autonomous_car::set_car_controls(int max_x_line, double (&x_line)[MAX_VIEW_
 
     set_speed_ctl(speed_ctl_val);
     INFO("set_car_control speed_ctl_val " << speed_ctl_val << endl);
+}
+
+// -----------------  MISC SUPPORT --------------------------------------------------
+
+const string autonomous_car::state_string()
+{
+    switch (state) {
+    case READY:
+        return "READY";
+    case TRAVELLING:
+        return "TRAVELLING";
+    case STOPPED:
+        return "STOPPED";
+    case APPROACHING_STOP_LINE:
+        return "APPROACHING STOP LINE";
+    case STOPPED_AT_STOP_LINE:
+        return "STOPPED AT STOP LINE";
+    case FAILED:
+        return "FAILED";
+    default:
+        return "INVALID STATE";
+    }
 }
 

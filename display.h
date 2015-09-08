@@ -57,6 +57,7 @@ public:
     void draw_line(int x1, int y1, int x2, int y2, int pid=0); 
     void draw_rect(int x, int y, int w, int h, int pid=0, int line_width=1);
     void draw_filled_rect(int x, int y, int w, int h, int pid=0);
+    void draw_pointer(int x, int y, int ptr_size, int pid=0);
 
     int text_draw(string str, double row, double col, int pid=0, bool evreg=false, int key_alias=0,
                   int fid=0, bool center=false, int field_cols=999);
@@ -74,6 +75,7 @@ public:
     int event_register(enum event_type et, int pid, int x, int y, int w, int h);
     int event_register(enum event_type et, int pid, int x, int y, int w, int h, int key_alias);
     struct event event_poll();
+    void event_play_sound(void);
 private:
     // window state
     struct SDL_Window * window; 
@@ -108,7 +110,6 @@ private:
     int mouse_motion_x;
     int mouse_motion_y;
     struct Mix_Chunk * event_sound;
-    void play_event_sound(void);
 
     // print screen
     void print_screen(void);

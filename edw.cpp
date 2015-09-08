@@ -271,6 +271,7 @@ int main(int argc, char **argv)
             }
             if (event.eid == eid_quit_win || event.eid == eid_quit) {
                 done = true;
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_clear) {
@@ -278,16 +279,19 @@ int main(int argc, char **argv)
                 create_road_x = INITIAL_CREATE_ROAD_X;
                 create_road_y = INITIAL_CREATE_ROAD_Y;
                 create_road_dir = INITIAL_CREATE_ROAD_DIR;
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_write) {
                 bool success = w.write(filename);
                 display_message(success ? "WRITE SUCCESS" : "WRITE FAILURE");
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_reset) {
                 bool success = w.read(filename);
                 display_message(success ? "READ SUCCESS" : "READ FAILURE");
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_pan) {
@@ -309,10 +313,12 @@ int main(int argc, char **argv)
             if (mode == MAIN) {
                 if (event.eid == eid_create_roads) {
                     mode = CREATE_ROADS;
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_edit_pixels) {
                     mode = EDIT_PIXELS;
+                    d.event_play_sound();
                     break;
                 }
             }
@@ -321,20 +327,24 @@ int main(int argc, char **argv)
             if (mode == CREATE_ROADS) {
                 if (event.eid == eid_run) {
                     create_roads_run = true;
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_stop) {
                     create_roads_run = false;
                     create_road_dir = (int)(create_road_dir + 0.5);
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_back) {
                     create_roads_run = false;
                     mode = MAIN;
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid >= eid_1 && event.eid <= eid_9) {
                     create_road_steering_idx = event.eid - eid_1 + 1;
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_cr_click) {
@@ -346,16 +356,19 @@ int main(int argc, char **argv)
                     create_road_y = y;
                     create_road_dir = 0;
                     create_roads_run = false;
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_rol) {
                     create_road_dir = (int)(create_road_dir + 0.5) - 1;
                     create_road_dir = sanitize_direction(create_road_dir);
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid == eid_ror) {
                     create_road_dir = (int)(create_road_dir + 0.5) + 1;
                     create_road_dir = sanitize_direction(create_road_dir);
+                    d.event_play_sound();
                     break;
                 }
             }
@@ -373,12 +386,14 @@ int main(int argc, char **argv)
                                                (double)event.val2/PANE_WORLD_HEIGHT, 
                                                x, y);
                     w.set_pixel(x, y, edit_pixels_color_selection);
+                    d.event_play_sound();
                     break;
                 }
                 if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {
                     INFO("GOT " << event.eid - eid_color_select[0] << endl);
                     edit_pixels_color_selection = 
                             edit_pixels_color_select_tbl[event.eid - eid_color_select[0]].color;
+                    d.event_play_sound();
                     break;
                 }
             }
@@ -410,31 +425,11 @@ int main(int argc, char **argv)
 
 void create_road_slice(class world &w, double x, double y, double dir)
 {
-    double dpx, dpy, tmpx, tmpy;
-    const double distance = 0.5;
+    double dpy = -0.5 * cos((dir+90) * (M_PI/180.0));
+    double dpx = 0.5 * sin((dir+90) * (M_PI/180.0));
 
-    dpy = -distance * cos((dir+90) * (M_PI/180.0));
-    dpx = distance * sin((dir+90) * (M_PI/180.0));
-
+    for (int i = -26; i <= 26; i++) {
+        w.set_pixel(x+i*dpx, y+i*dpy, display::BLACK);
+    }
     w.set_pixel(x,y,display::YELLOW);
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 26; i++) {
-        tmpx += dpx;
-        tmpy += dpy;
-        if (w.get_pixel(tmpx,tmpy) == display::GREEN) {
-            w.set_pixel(tmpx,tmpy,display::BLACK);
-        }
-    }
-
-    tmpx = x;
-    tmpy = y;
-    for (int i = 1; i <= 26; i++) {
-        tmpx -= dpx;
-        tmpy -= dpy;
-        if (w.get_pixel(tmpx,tmpy) == display::GREEN) {
-            w.set_pixel(tmpx,tmpy,display::BLACK);
-        }
-    }
 }

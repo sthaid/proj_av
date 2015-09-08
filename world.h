@@ -10,15 +10,12 @@ class world {
 public:
     static const int WORLD_WIDTH = 4096;
     static const int WORLD_HEIGHT = 4096;
-    static const int MAX_GET_VIEW_XY = 1000;
+    static const int MAX_GET_VIEW_XY = 1000;  // xxx private ?
     
     static void static_init();
 
     world(display &display);
     ~world();
-    void clear();
-    bool read(string filename);
-    bool write(string filename);
 
     void place_object_init();
     void place_object(int x, int y, int w, int h, unsigned char * pixels);
@@ -26,9 +23,13 @@ public:
 
     void get_view(int x, int y, double dir, int w, int h, unsigned char * pixels);
 
+    void clear();
+    bool read(string filename);
+    bool write(string filename);
     void set_pixel(int x, int y, unsigned char c);
     unsigned char get_pixel(int x, int y);
     void cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y);
+    void cvt_coord_world_to_pixel(int world_x, int world_y, double &pixel_x, double &pixel_y);
 private:
     // display
     display &d;

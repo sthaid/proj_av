@@ -53,11 +53,6 @@ private:
     double speed_ctl;
     double steer_ctl;
     bool   failed;
-
-    // car pixels
-    static const int CAR_PIXELS_HEIGHT = 17;
-    static const int CAR_PIXELS_WIDTH  = 17;
-    static unsigned char car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
 };
 
 #endif

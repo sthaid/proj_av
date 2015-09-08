@@ -34,7 +34,7 @@ void world::static_init(void)
     }
 }
 
-// -----------------  CONSTRUCTOR / DESTRUCTOR AND RELATED FUNCTIONS  ---------------
+// -----------------  CONSTRUCTOR / DESTRUCTOR  -------------------------------------
 
 world::world(display &display) : d(display)
 {
@@ -57,59 +57,6 @@ world::~world()
     d.texture_destroy(texture);
     delete [] static_pixels;
     delete [] pixels;
-}
-
-void world::clear()
-{
-    memset(static_pixels, display::GREEN, WORLD_WIDTH*WORLD_HEIGHT); 
-    memcpy(pixels, static_pixels, WORLD_WIDTH*WORLD_HEIGHT);
-    d.texture_destroy(texture);
-    texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), WORLD_WIDTH, WORLD_HEIGHT);
-}
-
-bool world::read(string filename)
-{
-    ifstream ifs;
-
-    ifs.open(filename, ios::in|ios::ate|ios::binary);
-    if (!ifs.is_open()) {
-        ERROR(filename << " does not exist" << endl);
-        return false;
-    }
-    if (ifs.tellg() != WORLD_WIDTH*WORLD_HEIGHT) {
-        ERROR(filename << " has incorrect size" << endl);
-        return false;
-    }
-    ifs.seekg(0,ios::beg);
-    ifs.read(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT); 
-    if (!ifs.good()) {
-        ERROR(filename << " read failed" << endl);
-        return false;
-    }
-
-    memcpy(pixels, static_pixels, WORLD_WIDTH*WORLD_HEIGHT);
-    d.texture_destroy(texture);
-    texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), WORLD_WIDTH, WORLD_HEIGHT);
-
-    return true;
-}
-
-bool world::write(string filename)
-{
-    ofstream ofs;
-
-    ofs.open(filename, ios::out|ios::binary|ios::trunc);
-    if (!ofs.is_open()) {
-        ERROR(filename << " create failed" << endl);
-        return false;
-    }
-    ofs.write(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT);  
-    if (!ofs.good()) {
-        ERROR(filename << " write failed" << endl);
-        return false;
-    }
-
-    return true;
 }
 
 // -----------------  DRAW WORLD AND WORLD OBJECTS  ---------------------------------
@@ -208,7 +155,60 @@ void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
     }
 }
 
-// -----------------  EDIT SUPPORT  -------------------------------------------------
+// -----------------  MISC  ---------------------------------------------------------
+
+void world::clear()
+{
+    memset(static_pixels, display::GREEN, WORLD_WIDTH*WORLD_HEIGHT); 
+    memcpy(pixels, static_pixels, WORLD_WIDTH*WORLD_HEIGHT);
+    d.texture_destroy(texture);
+    texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), WORLD_WIDTH, WORLD_HEIGHT);
+}
+
+bool world::read(string filename)
+{
+    ifstream ifs;
+
+    ifs.open(filename, ios::in|ios::ate|ios::binary);
+    if (!ifs.is_open()) {
+        ERROR(filename << " does not exist" << endl);
+        return false;
+    }
+    if (ifs.tellg() != WORLD_WIDTH*WORLD_HEIGHT) {
+        ERROR(filename << " has incorrect size" << endl);
+        return false;
+    }
+    ifs.seekg(0,ios::beg);
+    ifs.read(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT); 
+    if (!ifs.good()) {
+        ERROR(filename << " read failed" << endl);
+        return false;
+    }
+
+    memcpy(pixels, static_pixels, WORLD_WIDTH*WORLD_HEIGHT);
+    d.texture_destroy(texture);
+    texture = d.texture_create(reinterpret_cast<unsigned char *>(static_pixels), WORLD_WIDTH, WORLD_HEIGHT);
+
+    return true;
+}
+
+bool world::write(string filename)
+{
+    ofstream ofs;
+
+    ofs.open(filename, ios::out|ios::binary|ios::trunc);
+    if (!ofs.is_open()) {
+        ERROR(filename << " create failed" << endl);
+        return false;
+    }
+    ofs.write(reinterpret_cast<char*>(static_pixels), WORLD_WIDTH*WORLD_HEIGHT);  
+    if (!ofs.good()) {
+        ERROR(filename << " write failed" << endl);
+        return false;
+    }
+
+    return true;
+}
 
 void world::set_pixel(int x, int y, unsigned char p) 
 {
@@ -227,7 +227,7 @@ unsigned char world::get_pixel(int x, int y)
         return display::GREEN;
     }
 
-    return static_pixels[y][x];
+    return pixels[y][x]; // xxx was return static_pixels[y][x];
 }
 
 void world::cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y)
@@ -238,4 +238,14 @@ void world::cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_
 
     world_x = (center_x - world_display_width / 2) + (world_display_width * pixel_x);
     world_y = (center_y - world_display_height / 2) + (world_display_height * pixel_y);
+}
+
+void world::cvt_coord_world_to_pixel(int world_x, int world_y, double &pixel_x, double &pixel_y)
+{
+    assert(zoom != 0);
+    int  world_display_width  = WORLD_WIDTH / zoom;
+    int  world_display_height = WORLD_HEIGHT / zoom;
+
+    pixel_x = (double)(world_x - (center_x - world_display_width / 2)) / world_display_width;
+    pixel_y = (double)(world_y - (center_y - world_display_height / 2)) / world_display_height;
 }

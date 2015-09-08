@@ -16,6 +16,8 @@ using std::thread;
 using std::atomic;
 using std::mutex;
 using std::condition_variable;
+using std::ostringstream;
+using std::istringstream;
 
 // display and pane size 
 #define DISPLAY_WIDTH               1420
@@ -71,7 +73,9 @@ int       message_time_us = MAX_MESSAGE_TIME_US;
 const int     MAX_CAR = 1000;
 class car   * car[MAX_CAR];
 int           max_car = 0;
-void launch_new_car(display &d, world &w);
+int           dashboard_and_view_idx = 0;
+int           launch_pending = 0;
+bool launch_new_car(display &d, world &w);
 
 // update car controls threads
 const int          MAX_CAR_UPDATE_CONTROLS_THREAD = 10;
@@ -101,12 +105,21 @@ int main(int argc, char **argv)
     //
 
     // get options, and args
+    // xxx help option
     while (true) {
-        char opt_char = getopt(argc, argv, "");
+        char opt_char = getopt(argc, argv, "n:");
         if (opt_char == -1) {
             break;
         }
         switch (opt_char) {
+        case 'n': {
+            istringstream s(optarg);
+            s >> launch_pending;
+            if (s.fail() || !s.eof() || launch_pending < 0 || launch_pending > 30) { 
+                // xxx usage ,  and 30 limit ?
+                return 1;
+            }
+            break; }
         default:
             return 1;
         }
@@ -138,8 +151,8 @@ int main(int argc, char **argv)
     // MAIN LOOP
     //
 
-    enum mode { RUN, PAUSE };
-    enum mode  mode = PAUSE;
+    enum mode { RUN, STOP };
+    enum mode  mode = STOP;
     bool       done = false;
 
     while (!done) {
@@ -152,6 +165,11 @@ int main(int argc, char **argv)
         //
         // CAR SIMULATION
         // 
+
+        // launch cars
+        if (launch_pending > 0 && launch_new_car(d,w)) {
+            launch_pending--;
+        }
 
         // update all car mechanics: position, direction, speed
         if (mode == RUN) {            
@@ -192,11 +210,21 @@ int main(int argc, char **argv)
         // draw world 
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 
-        // draw car front view and dashboard
-        // XXX
-        if (max_car > 0) {
-            car[0]->draw_view(PANE_CAR_VIEW_ID);
-            car[0]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
+        // draw car front view and dashboard, and
+        // draw pointer to this car in the world view
+        if (dashboard_and_view_idx < max_car) {
+            car[dashboard_and_view_idx]->draw_view(PANE_CAR_VIEW_ID);
+            car[dashboard_and_view_idx]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
+
+            double pixel_x, pixel_y;
+            int ptr_size = 3 * zoom;
+            if (ptr_size < 7) {
+                ptr_size = 7;
+            }
+            w.cvt_coord_world_to_pixel(car[dashboard_and_view_idx]->get_x(), car[dashboard_and_view_idx]->get_y(),
+                                       pixel_x, pixel_y);
+            d.draw_set_color(display::PURPLE);
+            d.draw_pointer(pixel_x*PANE_WORLD_WIDTH, pixel_y*PANE_WORLD_HEIGHT, ptr_size, PANE_WORLD_ID);
         }
 
         // draw the message box
@@ -206,27 +234,28 @@ int main(int argc, char **argv)
         }
 
         // draw and register events
-// XXX add STEP control
-        int eid_quit_win = d.event_register(display::ET_QUIT);
-        int eid_pan      = d.event_register(display::ET_MOUSE_MOTION, 0);
-        int eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run      = d.text_draw("RUN",    0, 0,  PANE_PGM_CTL_ID, true, 'r');      
-        int eid_pause    = d.text_draw("PAUSE",  0, 7,  PANE_PGM_CTL_ID, true, 'p');      
-        int eid_launch   = d.text_draw("LAUNCH", 0, 14, PANE_PGM_CTL_ID, true, 'l');      
+        int eid_quit_win  = d.event_register(display::ET_QUIT);
+        int eid_pan       = d.event_register(display::ET_MOUSE_MOTION, 0);
+        int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
+        int eid_run_stop  = d.text_draw(mode == STOP ? "RUN" : "STOP",  0, 0, PANE_PGM_CTL_ID, true, 'r');      
+        int eid_launch    = d.text_draw("LAUNCH", 0, 7, PANE_PGM_CTL_ID, true, 'l');      
+        int eid_wp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
+        int eid_vp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_VIEW_ID);
+        int eid_dp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_DASHBOARD_ID);
+
+        // display number cars: active, failed, and pending
+        int failed_count = 0;
+        for (int i = 0; i < max_car; i++) {
+            if (car[i]->get_failed()) {
+                failed_count++;
+            }
+        }
+        ostringstream s;
+        s << "ACTV " << max_car << "  FAIL " << failed_count << " PEND " << launch_pending;
+        d.text_draw(s.str(), 1, 0, PANE_PGM_CTL_ID);
 
         // finish, updates the display
         d.finish();
-
-        // 
-        // SET MODE TO PAUSE IF CAR[0] HAS FAILED XXX TEMP
-        // 
-
-        for (int i = 0; i < max_car; i++) {
-            if (car[i]->get_failed() && mode != PAUSE) {
-                INFO(" *** PAUSING CAR " << i << " FAILED ***\n");
-                mode = PAUSE;
-            }
-        }
 
         //
         // EVENT HADNLING 
@@ -239,6 +268,7 @@ int main(int argc, char **argv)
             }
             if (event.eid == eid_quit_win) {
                 done = true;
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_pan) {
@@ -255,16 +285,38 @@ int main(int argc, char **argv)
                 }
                 break;
             }
-            if (event.eid == eid_run) {
-                mode = RUN;
-                break;
-            }
-            if (event.eid == eid_pause) {
-                mode = PAUSE;
+            if (event.eid == eid_run_stop) {
+                mode = (mode == RUN ? STOP : RUN);
+                d.event_play_sound();
                 break;
             }
             if (event.eid == eid_launch) {
-                launch_new_car(d,w);
+                launch_pending++;
+                d.event_play_sound();
+            }
+            if (event.eid == eid_wp_click) {
+                int x,y;
+                w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH,
+                                           (double)event.val2/PANE_WORLD_HEIGHT,
+                                           x, y);
+                for (int i = 0; i < max_car; i++) {
+                    if (x >= car[i]->get_x() - 7 &&
+                        x <= car[i]->get_x() + 7 &&
+                        y >= car[i]->get_y() - 7 &&
+                        y <= car[i]->get_y() + 7)
+                    {
+                        dashboard_and_view_idx = i;
+                        d.event_play_sound();
+                        break;
+                    }
+                }
+                break;
+            }
+            if (event.eid == eid_vp_click || event.eid == eid_dp_click) {
+                if (max_car > 0) {
+                    dashboard_and_view_idx = (dashboard_and_view_idx + 1) % max_car;
+                    d.event_play_sound();
+                }
                 break;
             }
         } while(0);
@@ -278,7 +330,7 @@ int main(int argc, char **argv)
         long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
-#if 1
+#if 1  //xxx
         // oncer every 10 secs, debug print this cycle's processing tie
         static int count;
         if (++count == 10000000 / CYCLE_TIME_US) {
@@ -303,34 +355,38 @@ int main(int argc, char **argv)
 
 // -----------------  LAUNCH NEW CAR  --------------------------------------------------------------
 
-void launch_new_car(display &d, world &w)
+bool launch_new_car(display &d, world &w)
 {
-    static std::default_random_engine generator(microsec_timer());  // XXX test this
-    static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
-#if 0
-    static bool first_call = true;
+    const int xo = 2055;
+    const int yo = 2048;
+    const int dir = 0;
+    const int speed = 0;
 
-    // seed the random number generator on first call
-    if (first_call) {
-        generator.seed(microsec_timer());
-        first_call = false;
+    // check for clear to launch
+    for (int y = yo; y >= yo-12; y--) {
+        if (w.get_pixel(xo,y) != display::BLACK) {
+            return false;
+        }
     }
-#endif
 
-    // check that launch spot is clear
-    // XXX 
-
-    // choose the car's max_speed at random, in range 30 to 50 mph
-#if 0
+    // choose the car's max speed at random, in range 30 to 50 mph
+#if 1
+    static std::default_random_engine generator(microsec_timer()); 
+    static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
     int max_speed = random_uniform_30_to_50(generator);
 #else
-    int max_speed = 39;
+    int max_speed = 39; //xxx
 #endif
-    INFO("MAX SPEED " << max_speed << endl);
 
     // create the car
     int id = max_car;
-    car[max_car++] = new class autonomous_car(d,w,id,2055,2048,0,0,max_speed);
+    car[max_car++] = new class autonomous_car(d, w, id, xo, yo, dir, speed, max_speed);
+
+    // set view and dashboard display to the new car
+    dashboard_and_view_idx = max_car - 1;
+
+    // return success
+    return true;
 }
 
 // -----------------  CAR UPDATE CONTROLS THREAD----------------------------------------------------

@@ -336,6 +336,62 @@ void display::draw_filled_rect(int x, int y, int w, int h, int pid)
     SDL_RenderFillRect(renderer, &rect);
 }
 
+void display::draw_pointer(int x, int y, int ptr_size, int pid)
+{
+    const int MAX_POINTS = 1000;
+    SDL_Point points[MAX_POINTS];
+    int count=0;
+
+    // limit minimum ptr_size
+    if (ptr_size < 2) {
+        ptr_size = 2;
+    }
+
+    // draw pointer head
+    for (int x_ptr = 0; x_ptr <= ptr_size; x_ptr++) {
+        for (int y_ptr = -x_ptr; y_ptr <= x_ptr; y_ptr++) {
+            int xp = x + x_ptr;
+            int yp = y + y_ptr;
+            if (xp < 0 || xp >= pane[pid].w || yp < 0 || yp >= pane[pid].h) {
+                continue;
+            }
+
+            points[count].x = xp;
+            points[count].y = yp;
+            count++;
+            if (count == MAX_POINTS) {
+                SDL_RenderDrawPoints(renderer, points, count);
+                count = 0;
+            }
+        }
+    }
+
+    // draw pointer tail
+    int tail_width = ptr_size/4;
+    if (tail_width < 1) {
+        tail_width = 1;
+    }
+    for (int x_ptr = ptr_size+1; x_ptr <= 2*ptr_size; x_ptr++) {
+        for (int y_ptr = -tail_width; y_ptr <= tail_width; y_ptr++) {
+            int xp = x + x_ptr;
+            int yp = y + y_ptr;
+            if (xp < 0 || xp >= pane[pid].w || yp < 0 || yp >= pane[pid].h) {
+                continue;
+            }
+
+            points[count].x = xp;
+            points[count].y = yp;
+            count++;
+            if (count == MAX_POINTS) {
+                SDL_RenderDrawPoints(renderer, points, count);
+                count = 0;
+            }
+        }
+    }
+
+    SDL_RenderDrawPoints(renderer, points, count);
+}
+
 // -----------------  TEXT  ------------------------------------------------------------
 
 int display::text_draw(string str, double row, double col, int pid, bool evreg, int key_alias,
@@ -625,7 +681,7 @@ void display::texture_draw2(struct texture * t, int pid, int x, int y, int w, in
 
 int display::event_register(enum event_type et, int pid)
 {
-    return event_register(et, pid, pane[pid].x, pane[pid].y, pane[pid].w, pane[pid].h);
+    return event_register(et, pid, 0, 0, pane[pid].w, pane[pid].h);
 }
 
 int display::event_register(enum event_type et, int pid, int x, int y, int w, int h)
@@ -731,7 +787,6 @@ struct display::event display::event_poll()
                     }
                 }
                 if (event.eid != EID_NONE) {
-                    play_event_sound();
                     break;
                 }
 
@@ -766,7 +821,6 @@ struct display::event display::event_poll()
                     }
                 }
                 if (event.eid != EID_NONE) {
-                    play_event_sound();
                     break;
                 }
 
@@ -848,7 +902,7 @@ struct display::event display::event_poll()
                 // printscreen
                 if (key == 'p') {
                     print_screen();
-                    play_event_sound();
+                    event_play_sound();
                 }
                 break;
             }
@@ -908,11 +962,10 @@ struct display::event display::event_poll()
                 break;
             }
 
-            // fill in the event, and play event sound
+            // fill in the event
             event.eid = eid;
             event.val1 = val1;
             event.val2 = 0;
-            play_event_sound();
             break; }
 
        case SDL_WINDOWEVENT: {
@@ -950,13 +1003,10 @@ struct display::event display::event_poll()
                 break;
             }
 
-            // fill in the event, and play event sound
+            // fill in the event
             event.eid = eid;
             event.val1 = 0;  // not used
             event.val2 = 0;  // not used
-            if (et == ET_WIN_MINIMIZED || et == ET_WIN_RESTORED) {
-                play_event_sound();
-            }
             break; }
 
         case SDL_QUIT: {
@@ -973,11 +1023,10 @@ struct display::event display::event_poll()
                 break;
             }
 
-            // fill in the event, and play event sound
+            // fill in the event
             event.eid = eid;
             event.val1 = 0;  // not used
             event.val2 = 0;  // not used
-            play_event_sound();
             break; }
 
         default: {
@@ -995,7 +1044,7 @@ struct display::event display::event_poll()
     return event;
 }
 
-void display::play_event_sound(void)
+void display::event_play_sound(void)
 {
     Mix_PlayChannel(-1, event_sound, 0); 
 }

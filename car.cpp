@@ -12,7 +12,11 @@ using std::ostringstream;
 using std::setprecision;
 using std::fixed;
 
-unsigned char car::car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
+// car pixels
+const int CAR_PIXELS_HEIGHT = 17;
+const int CAR_PIXELS_WIDTH  = 17;
+unsigned char good_car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
+unsigned char failed_car_pixels[360][CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH];
 
 // -----------------  CAR CLASS STATIC INITIALIZATION  ------------------------------
 
@@ -22,41 +26,64 @@ void car::static_init(display &d)
     // init car_pixels ...
     //
 
-    // create car at 0 degree rotation
-    unsigned char (&car)[CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH] = car_pixels[0];
-    memset(car, display::TRANSPARENT, sizeof(car));
+    // preset all pixels to transparent
+    memset(good_car_pixels, display::TRANSPARENT, sizeof(good_car_pixels));
+    memset(failed_car_pixels, display::TRANSPARENT, sizeof(failed_car_pixels));
+
+    // create good_car_pixels at 0 degree rotation
     for (int h = 1; h <= 15; h++) {
         for (int w = 5; w <= 11; w++) {
-            car[h][w] = display::BLUE;
+            good_car_pixels[0][h][w] = display::BLUE;
         }
     }
-    car[15][5]  = display::ORANGE;   // tail lights
-    car[15][6]  = display::ORANGE;
-    car[15][10] = display::ORANGE;
-    car[15][11] = display::ORANGE;
-    car[14][5]  = display::ORANGE;
-    car[14][6]  = display::ORANGE;
-    car[14][10] = display::ORANGE;
-    car[14][11] = display::ORANGE;
-    car[1][5]   = display::WHITE; // head lights
-    car[1][6]   = display::WHITE;
-    car[1][10]  = display::WHITE;
-    car[1][11]  = display::WHITE;
-    car[2][5]   = display::WHITE;
-    car[2][6]   = display::WHITE;
-    car[2][10]  = display::WHITE;
-    car[2][11]  = display::WHITE;
+    good_car_pixels[0][15][5]  = display::ORANGE;   // tail lights
+    good_car_pixels[0][15][6]  = display::ORANGE;
+    good_car_pixels[0][15][10] = display::ORANGE;
+    good_car_pixels[0][15][11] = display::ORANGE;
+    good_car_pixels[0][14][5]  = display::ORANGE;
+    good_car_pixels[0][14][6]  = display::ORANGE;
+    good_car_pixels[0][14][10] = display::ORANGE;
+    good_car_pixels[0][14][11] = display::ORANGE;
+    good_car_pixels[0][1][5]   = display::WHITE; // head lights
+    good_car_pixels[0][1][6]   = display::WHITE;
+    good_car_pixels[0][1][10]  = display::WHITE;
+    good_car_pixels[0][1][11]  = display::WHITE;
+    good_car_pixels[0][2][5]   = display::WHITE;
+    good_car_pixels[0][2][6]   = display::WHITE;
+    good_car_pixels[0][2][10]  = display::WHITE;
+    good_car_pixels[0][2][11]  = display::WHITE;
 
-    // create cars at 1 to 359 degrees rotation, 
-    // using the car created above at 0 degrees as a template
+    // create failed_car_pixels at 0 degree rotation
+    for (int h = 1; h <= 15; h++) {
+        for (int w = 5; w <= 11; w++) {
+            failed_car_pixels[0][h][w] = display::PINK;
+        }
+    }
+    failed_car_pixels[0][15][5]  = display::ORANGE;   // tail lights
+    failed_car_pixels[0][15][6]  = display::ORANGE;
+    failed_car_pixels[0][15][10] = display::ORANGE;
+    failed_car_pixels[0][15][11] = display::ORANGE;
+    failed_car_pixels[0][14][5]  = display::ORANGE;
+    failed_car_pixels[0][14][6]  = display::ORANGE;
+    failed_car_pixels[0][14][10] = display::ORANGE;
+    failed_car_pixels[0][14][11] = display::ORANGE;
+    failed_car_pixels[0][1][5]   = display::WHITE; // head lights
+    failed_car_pixels[0][1][6]   = display::WHITE;
+    failed_car_pixels[0][1][10]  = display::WHITE;
+    failed_car_pixels[0][1][11]  = display::WHITE;
+    failed_car_pixels[0][2][5]   = display::WHITE;
+    failed_car_pixels[0][2][6]   = display::WHITE;
+    failed_car_pixels[0][2][10]  = display::WHITE;
+    failed_car_pixels[0][2][11]  = display::WHITE;
+
+    // create good_car_pixels and failed_car_pixels at 1 to 359 degrees rotation, 
+    // using the good/failed_car_pixels created above at 0 degrees as a template
     for (int dir = 1; dir <= 359; dir++) {
         double sin_dir = sin(dir *  M_PI/180.0);
         double cos_dir = cos(dir *  M_PI/180.0);
-        unsigned char (&carprime)[CAR_PIXELS_HEIGHT][CAR_PIXELS_WIDTH] = car_pixels[dir];
         int x,y,xprime,yprime;
 
         #define OVSF 3  // Over Sample Factor
-        memset(carprime, display::TRANSPARENT, sizeof(car));
         for (y = 0; y < CAR_PIXELS_HEIGHT*OVSF; y++) {
             for (x = 0; x < CAR_PIXELS_WIDTH*OVSF; x++) {
                 xprime = (x-CAR_PIXELS_WIDTH*OVSF/2) * cos_dir - (y-CAR_PIXELS_HEIGHT*OVSF/2) * sin_dir + CAR_PIXELS_WIDTH*OVSF/2 + 0.001;
@@ -64,7 +91,8 @@ void car::static_init(display &d)
                 if (xprime < 0 || xprime >= CAR_PIXELS_WIDTH*OVSF || yprime < 0 || yprime >= CAR_PIXELS_HEIGHT*OVSF) {
                     continue;
                 }
-                carprime[yprime/OVSF][xprime/OVSF] = car[y/OVSF][x/OVSF];
+                good_car_pixels[dir][yprime/OVSF][xprime/OVSF] = good_car_pixels[0][y/OVSF][x/OVSF];
+                failed_car_pixels[dir][yprime/OVSF][xprime/OVSF] = failed_car_pixels[0][y/OVSF][x/OVSF];
             }
         }
     }
@@ -172,8 +200,13 @@ void car::place_car_in_world()
     int direction = sanitize_direction(dir + 0.5);
     assert(direction >= 0 && direction < 360);
 
-    w.place_object(x, y, CAR_PIXELS_WIDTH, CAR_PIXELS_HEIGHT,
-                   reinterpret_cast<unsigned char *>(car_pixels[direction]));
+    if (!get_failed()) {
+        w.place_object(x, y, CAR_PIXELS_WIDTH, CAR_PIXELS_HEIGHT,
+                    reinterpret_cast<unsigned char *>(good_car_pixels[direction]));
+    } else {
+        w.place_object(x, y, CAR_PIXELS_WIDTH, CAR_PIXELS_HEIGHT,
+                    reinterpret_cast<unsigned char *>(failed_car_pixels[direction]));
+    }
 }
 
 // -----------------  VIRTUAL DRAW_VIEW, DRAW_DASHBOARD, and UPDATE_CONTROLS --------

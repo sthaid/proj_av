@@ -18,15 +18,20 @@ private:
     static const int xo = MAX_VIEW_WIDTH/2;
     static const int yo = MAX_VIEW_HEIGHT-1;
     typedef unsigned char (view_t)[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
+    enum state { STATE_NONE, STATE_DRIVING, STATE_STOPPED_AT_STOP_LINE };
+    enum obstruction { OBSTRUCTION_NONE, OBSTRUCTION_STOP_LINE, OBSTRUCTION_VEHICLE, OBSTRUCTION_END_OF_ROAD,
+                       OBSTRUCTION_OTHER };
 
+    enum state state;
+    enum obstruction obstruction;
     int distance_road_is_clear;
-    enum { READY, TRAVELLING, STOPPED, APPROACHING_STOP_LINE, STOPPED_AT_STOP_LINE, FAILED } state;  // XXX
+    double x_line[MAX_VIEW_HEIGHT];
 
-    bool stopped_at_stop_sign(view_t &view);
-    void scan_road(view_t & view, int &max_x_line, double (&x_line)[MAX_VIEW_HEIGHT]);
+    void scan_road(view_t & view);
     double scan_for_center_line(view_t &view, int y, double x_double);
-    void set_car_controls(int max_x_line, double (&x_line)[MAX_VIEW_HEIGHT]);
+    void set_car_controls();
     const string state_string();
+    const string obstruction_string();
 
 };
 

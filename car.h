@@ -27,10 +27,11 @@ public:
     double get_speed_ctl() { return speed_ctl; }
     double get_steer_ctl() { return steer_ctl; }
     bool get_failed() { return failed; };
+    string get_failed_str() { return failed_str; };
 
     void set_speed_ctl(double val);
     void set_steer_ctl(double val);
-    void set_failed() { failed = true; }
+    void set_failed(const string &str) { failed_str = str; failed = true; }
     void update_mechanics(double microsecs);
     void place_car_in_world();
 
@@ -53,6 +54,7 @@ private:
     double speed_ctl;
     double steer_ctl;
     bool   failed;
+    string failed_str;
 };
 
 #endif

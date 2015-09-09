@@ -382,9 +382,6 @@ bool launch_new_car(display &d, world &w)
     int id = max_car;
     car[max_car++] = new class autonomous_car(d, w, id, xo, yo, dir, speed, max_speed);
 
-    // set view and dashboard display to the new car
-    dashboard_and_view_idx = max_car - 1;
-
     // return success
     return true;
 }

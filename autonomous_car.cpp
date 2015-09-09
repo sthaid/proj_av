@@ -101,7 +101,7 @@ void autonomous_car::update_controls(double microsecs)
 
     // the front of car sometimes extends a little beyone yo-8;
     // check for this and clear these pixels
-    for (int y_idx = yo-8; y_idx <= yo-9; y_idx--) {
+    for (int y_idx = yo-8; y_idx >= yo-9; y_idx--) {
         for (int x_idx = xo-5; x_idx <= xo+5; x_idx++) {
             if (view[y_idx][x_idx] == display::WHITE) {
                 view[y_idx][x_idx] = display::BLACK;    

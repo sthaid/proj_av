@@ -1,3 +1,4 @@
+// XXX O0 in Makefile
 #include <sstream>
 #include <thread>
 #include <atomic>

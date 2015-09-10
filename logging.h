@@ -32,12 +32,17 @@ using std::endl;
     } while (0)
 
 #ifdef ENABLE_LOGGING_AT_DEBUG_LEVEL
-#define DEBUG(x) \
-    do { \
-        cout << "DEBUG " << __func__ << ": " << x; \
-    } while (0)
+    #define DEBUG(x) \
+        do { \
+            cout << "DEBUG " << __func__ << ": " << x; \
+        } while (0)
+    #define DEBUG_CONT(x) \
+        do { \
+            cout << x; \
+        } while (0)
 #else
-#define DEBUG(x) 
+    #define DEBUG(x) 
+    #define DEBUG_CONT(x) 
 #endif
 
 #endif

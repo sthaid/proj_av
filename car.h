@@ -19,6 +19,7 @@ public:
 
     world &get_world() { return w; }
     display &get_display() { return d; }
+    int get_id() { return id; }
     double get_x() { return x; }
     double get_y() { return y; }
     double get_dir() { return dir; }

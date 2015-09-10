@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <cmath>  // yyy check other includes in other files
 #include <sstream>
+#include <mutex>
 
 #include "autonomous_car.h"
 #include "logging.h"
@@ -89,6 +90,11 @@ void autonomous_car::draw_dashboard(int pid)
 
 // -----------------  UPDATE CONTROLS VIRTUAL FUNCTION  -----------------------------
 
+#define DEBUG_ID(x) \
+    do { \
+        DEBUG("ID " << get_id() << ": " << x); \
+    } while (0)
+
 void autonomous_car::update_controls(double microsecs)
 {
     view_t view;
@@ -100,7 +106,7 @@ void autonomous_car::update_controls(double microsecs)
 
     // debug print seperator
     // yyy the debug prints should be tagged with the car id
-    DEBUG("--------------------------------------------------------\n");
+    DEBUG_ID("--------------------------------------------------------\n");
 
     // get the front view
     world &w = get_world();
@@ -320,13 +326,17 @@ void autonomous_car::scan_road(view_t &view)
     distance_road_is_clear = max_x_line;
     obstruction = obs;
 
-#if 0
+#ifdef ENABLE_LOGGING_AT_DEBUG_LEVEL
     // debug print 
-    DEBUG("return " << obstruction_string() << " " << distance_road_is_clear << " : ");
-    for (int i = 0; i < distance_road_is_clear; i++) {
-        DEBUG_CONT(x_line[i] << " ");
+    {
+        std::ostringstream s;
+        s << "return " << obstruction_string() << " " << distance_road_is_clear << " : ";
+        for (int i = 0; i < distance_road_is_clear; i++) {
+            s << x_line[i] << " ";
+        }
+        s << endl;
+        DEBUG_ID(s.str());
     }
-    DEBUG_CONT(endl);
 #endif
 }
 
@@ -376,7 +386,7 @@ void autonomous_car::set_car_controls()
         steer_direction = atan((x_line[steer_target] + 7 - xo) / (steer_target + 1)) * (180./M_PI);
     }
     set_steer_ctl(steer_direction);
-    DEBUG("set_car_control steer_dir " << steer_direction << endl);
+    DEBUG_ID("set_car_control steer_dir " << steer_direction << endl);
 
     // speed control
     double speed_target;
@@ -398,7 +408,7 @@ void autonomous_car::set_car_controls()
     }
 
     current_speed = get_speed();
-    DEBUG("set_car_control speed_target " << speed_target << " current_speed " << current_speed << endl);
+    DEBUG_ID("set_car_control speed_target " << speed_target << " current_speed " << current_speed << endl);
 
     if (speed_target >= current_speed) {
         speed_ctl_val = (speed_target - current_speed) * K_ACCEL;
@@ -408,7 +418,7 @@ void autonomous_car::set_car_controls()
     }
 
     set_speed_ctl(speed_ctl_val);
-    DEBUG("set_car_control speed_ctl_val " << speed_ctl_val << endl);
+    DEBUG_ID("set_car_control speed_ctl_val " << speed_ctl_val << endl);
 }
 
 // -----------------  MISC SUPPORT --------------------------------------------------

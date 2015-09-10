@@ -2,47 +2,51 @@
 #define __LOGGING_H__
 
 #include <iostream>
+#include <sstream>
 
 using std::cout;
 using std::endl;
 
-//#define ENABLE_LOGGING_AT_DEBUG_LEVEL
+#define ENABLE_LOGGING_AT_DEBUG_LEVEL
 
 #define INFO(x) \
     do { \
-        cout << "INFO " << __func__ << ": " << x; \
-    } while (0)
-#define INFO_CONT(x) \
-    do { \
-        cout << x; \
+        std::ostringstream _s; \
+        _s << "INFO " << __func__ << ": " << x; \
+        cout << _s.str(); \
     } while (0)
 
 #define WARNING(x) \
     do { \
-        cout << "WARNING " << __func__ << ": " << x; \
+        std::ostringstream _s; \
+        _s << "WARNING " << __func__ << ": " << x; \
+        cout << _s.str(); \
     } while (0)
+
 #define ERROR(x) \
     do { \
-        cout << "ERROR " << __func__ << ": " << x; \
+        std::ostringstream _s; \
+        _s << "ERROR " << __func__ << ": " << x; \
+        cout << _s.str(); \
     } while (0)
+
 #define FATAL(x) \
     do { \
-        cout << "FATAL " << __func__ << ": " << x; \
+        std::ostringstream _s; \
+        _s << "FATAL " << __func__ << ": " << x; \
+        cout << _s.str(); \
         abort(); \
     } while (0)
 
 #ifdef ENABLE_LOGGING_AT_DEBUG_LEVEL
     #define DEBUG(x) \
         do { \
-            cout << "DEBUG " << __func__ << ": " << x; \
-        } while (0)
-    #define DEBUG_CONT(x) \
-        do { \
-            cout << x; \
+            std::ostringstream _s; \
+            _s << "DEBUG " << __func__ << ": " << x; \
+            cout << _s.str(); \
         } while (0)
 #else
     #define DEBUG(x) 
-    #define DEBUG_CONT(x) 
 #endif
 
 #endif

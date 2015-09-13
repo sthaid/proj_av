@@ -49,7 +49,7 @@ void autonomous_car::draw_view(int pid)
     d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view), MAX_VIEW_WIDTH);
     d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
 
-   d.text_draw("FRONT", 0, 0, pid, false, 0, 1, true);
+    d.text_draw("FRONT", 0, 0, pid, false, 0, 1, true);
 }
 
 // -----------------  DRAW DASHBOARD VIRTUAL FUNCTION  -----------------------------
@@ -105,7 +105,6 @@ void autonomous_car::update_controls(double microsecs)
     }
 
     // debug print seperator
-    // yyy the debug prints should be tagged with the car id
     DEBUG_ID("--------------------------------------------------------\n");
 
     // get the front view
@@ -144,7 +143,9 @@ void autonomous_car::update_controls(double microsecs)
                 state_change(STATE_STOPPED_AT_STOP_LINE);
             } else if (distance_road_is_clear <= 5 && obstruction == OBSTRUCTION_END_OF_ROAD) {
                 state_change(STATE_STOPPED_AT_END_OF_ROAD);
-            } else if (distance_road_is_clear <= 5 && obstruction == OBSTRUCTION_VEHICLE) {
+            } else if (distance_road_is_clear <= 5 && obstruction == OBSTRUCTION_REAR_VEHICLE) {
+                state_change(STATE_STOPPED_AT_VEHICLE);
+            } else if (distance_road_is_clear <= 5 && obstruction == OBSTRUCTION_FRONT_VEHICLE) {
                 state_change(STATE_STOPPED_AT_VEHICLE);
             } else {
                 state_change(STATE_STOPPED);
@@ -180,20 +181,31 @@ void autonomous_car::update_controls(double microsecs)
     }
 }
 
+// TEST CASES WITH ONEE CAR
+// - end of road at 45 degrees
+// - end of road straight
+// - stop sign
+// - curvy road
+// - straight road with gap
+// - curvy road with gap
+// - xxx tbd intersections
+
+// TEST CASES WITH 5 CARS
+// - repeat above
+
 void autonomous_car::scan_road(view_t &view)
 {
     int              max_x_line;
     int              y;
-    int              minigap_y_end;
-    double           minigap_slope;
     enum obstruction obs;
+    minigap_t        minigap;
     
     // init
-    max_x_line = 0;
-    y = yo - 8;  // in front of car
-    minigap_y_end = NO_VALUE;
-    minigap_slope = 0;
-    obs = OBSTRUCTION_NONE;
+    max_x_line     = 0;
+    y              = yo - 8;  // in front of car
+    obs            = OBSTRUCTION_NONE;
+    minigap.y_last = NO_VALUE;
+    minigap.slope  = 0;
 
     // this loop determines the x location of the center line, 
     while (true) {
@@ -220,59 +232,29 @@ void autonomous_car::scan_road(view_t &view)
         // else if y is in a gap then
         //   determine x line location based on yyy
         // else
-        //   determine x line location based on scanning for the center line;
-        //   also check for end-of-road
+        //   determine x line location based on scanning for the center line
         // endif
-        if (minigap_y_end != NO_VALUE) {
-            x = x_last + minigap_slope;
-            if (minigap_y_end == y) {
-                minigap_y_end = NO_VALUE;
+        if (minigap.y_last != NO_VALUE) {
+            x = x_last + minigap.slope;
+            if (y == minigap.y_last) {
+                minigap.y_last = NO_VALUE;
             }
         } else if (false) {
             x = NO_VALUE; // yyy
         } else {
-            bool end_of_road;
-            x = scan_for_center_line(view, y, x_last+slope, end_of_road);
-            if (end_of_road) {
-                obs = OBSTRUCTION_END_OF_ROAD;
-                break;
-            }
+            x = scan_across_for_center_line(view, y, x_last+slope);
         }
 
         // check if above code has determined location of center line, at y
         if (x != NO_VALUE) {
             // check for loop termination based on x,y,slope at limit
-            if (y < 0 ||
-                x < 0 || x > MAX_VIEW_WIDTH-20 ||
-                abs(slope) > 1) 
-            {
+            if (y < 0 || x < 0 || x > MAX_VIEW_WIDTH-20 || abs(slope) > 1) {
+                obs = OBSTRUCTION_NONE;
                 break;
             }
 
             // check for loop termination based on road not clear 
-            // yyy should scan across for 13*sqrt(1+slope^2)
-            // yyy might hit a green, maybe just lower the 13
-            for (int x_idx = x; x_idx < x+11; x_idx++) {
-                unsigned char pixel = view[y][x_idx];
-                if (pixel != display::YELLOW && pixel != display::BLACK) {
-                    if (pixel == display::RED && state == STATE_CONTINUING_FROM_STOP) {
-                        continue;
-                    }
-
-                    if (pixel == display::GREEN) {
-                        obs = OBSTRUCTION_END_OF_ROAD;
-                    } else if (pixel == display::RED) {
-                        obs = OBSTRUCTION_STOP_LINE;
-                    } else if (pixel == display::BLUE || pixel == display::PINK || pixel == display::ORANGE) {
-                        obs = OBSTRUCTION_VEHICLE;
-                    } else if (pixel == display::WHITE) {
-                        set_failed("HEADLIGHT DETECTED");
-                    } else {
-                        assert(0);
-                    }
-                    break;
-                }
-            }
+            obs = scan_across_for_obstruction(view, y, x); 
             if (obs != OBSTRUCTION_NONE) {
                 break;
             }
@@ -285,40 +267,33 @@ void autonomous_car::scan_road(view_t &view)
             continue;
         }
 
-        // check for mini gap by trying to locate center line at next several values of y;
-        // this code also detects end-of-road obstruction
+        // check for end of road at the next several values of y
         // if end of road detected
-        //   set obsttuction
+        //   set obsttuction to end of road
         //   break
         // endif
-        // if minigap found then
-        //   set mini gap variables
-        //   continue
-        // endif
-        for (int y_idx = y-1; y_idx >= y-3; y_idx--) {
-            double x_scl;
-            bool end_of_road;
-            x_scl = scan_for_center_line(view, y_idx, x_last + (y - y_idx) * slope, end_of_road);
-            if (end_of_road) {
-                obs = OBSTRUCTION_END_OF_ROAD;
-                break;
-            }
-            if (x_scl != NO_VALUE) {
-                minigap_y_end = y_idx+1;
-                minigap_slope = (x_scl - x_last) / (y - y_idx);
-            }
-        }
-        if (obs != OBSTRUCTION_NONE) {
+        if (scan_ahead_for_end_of_road(view, y, x_last+slope, slope)) {
+            obs = OBSTRUCTION_END_OF_ROAD;
             break;
         }
-        if (minigap_y_end != NO_VALUE) {
+
+        // check for mini gap by trying to locate center line at next several values of y;
+        // if minigap found then
+        //   continue
+        // endif
+        minigap = scan_ahead_for_minigap(view, y, x_last+slope, slope);
+        if (minigap.y_last != NO_VALUE) {
             continue;
         }
 
         // yyy check for full gap
 
-        // at this y we have not found a center line, minigap, full gap,
-        // or obstruction, so we're done scanning the road
+        // look ahead from the current y has not found any of:
+        // - mini gap
+        // - full gap
+        // - end of road obstruction
+        // so break out of the loop with no obstruction found
+        obs = OBSTRUCTION_NONE;
         break;
     }
 
@@ -340,24 +315,17 @@ void autonomous_car::scan_road(view_t &view)
 #endif
 }
 
-double autonomous_car::scan_for_center_line(view_t &view, int y, double x_double, bool &end_of_road)
+double autonomous_car::scan_across_for_center_line(view_t &view, int y, double x_double)
 {
     int x = round(x_double);
     int x_found_start = NO_VALUE;
     int x_found_end   = NO_VALUE;
-
-    end_of_road = false;
 
     if (y < 0 || x-5 < 0 || x+5 >= MAX_VIEW_WIDTH) {
         return NO_VALUE;
     }
 
     for (int x_idx = x-5; x_idx <= x+5; x_idx++) {
-        if (view[y][x_idx] == display::GREEN) {
-            end_of_road = true;
-            return NO_VALUE;
-        }
-
         if (view[y][x_idx] == display::YELLOW) {
             if (x_found_start == NO_VALUE) {
                 x_found_start = x_idx;
@@ -367,6 +335,80 @@ double autonomous_car::scan_for_center_line(view_t &view, int y, double x_double
     }
 
     return (x_found_start == NO_VALUE ? NO_VALUE : (double)(x_found_start + x_found_end) / 2);
+}
+
+enum autonomous_car::obstruction autonomous_car::scan_across_for_obstruction(view_t &view, int y, double x_double)
+{
+    enum obstruction obs = OBSTRUCTION_NONE;
+    int x = x_double;
+
+    // yyy should scan across for N*sqrt(1+slope^2)
+
+    if (y < 0 || x < 0 || x+10 >= MAX_VIEW_WIDTH) {
+        return OBSTRUCTION_NONE;
+    }
+
+    for (int x_idx = x; x_idx <= x+10; x_idx++) {
+        unsigned char pixel = view[y][x_idx];
+        if (pixel != display::YELLOW && pixel != display::BLACK) {
+            if (pixel == display::RED && state == STATE_CONTINUING_FROM_STOP) {
+                continue;
+            }
+
+            if (pixel == display::GREEN) {
+                obs = OBSTRUCTION_END_OF_ROAD;
+            } else if (pixel == display::RED) {
+                obs = OBSTRUCTION_STOP_LINE;
+            } else if (pixel == display::WHITE) {
+                obs = OBSTRUCTION_FRONT_VEHICLE;
+            } else if (pixel == display::ORANGE) {
+                obs = OBSTRUCTION_REAR_VEHICLE;
+            } else if (pixel == display::BLUE || pixel == display::PINK) {
+                obs = OBSTRUCTION_REAR_VEHICLE;
+                continue; 
+            } else {
+                assert(0);
+            }
+            break;
+        }
+    }
+
+    return obs;
+}
+
+bool autonomous_car::scan_ahead_for_end_of_road(view_t &view, int y, double x_double, double slope)
+{
+    for (int y_idx = y; y_idx >= y-3; y_idx--) {
+        int x = x_double;
+        if (y_idx < 0 || x-5 < 0 || x+5 >= MAX_VIEW_WIDTH) {
+            return false;
+        }
+        for (int x_idx = x-5; x_idx <= x+5; x_idx++) {
+            if (view[y_idx][x_idx] == display::GREEN) {
+                return true;
+            }
+        }
+        x_double += slope;
+    }
+
+    return false;
+}
+
+autonomous_car::minigap_t autonomous_car::scan_ahead_for_minigap(view_t &view, int y, double x, double slope)
+{
+    minigap_t minigap = {NO_VALUE, 0.0};
+
+    for (int y_idx = y-1; y_idx >= y-3; y_idx--) {
+        double x_scl;
+        x_scl = scan_across_for_center_line(view, y_idx, x + (y - y_idx) * slope);
+        if (x_scl != NO_VALUE) {
+            minigap.y_last = y_idx+1;
+            minigap.slope = (x_scl - x + slope) / (y - y_idx + 1);
+            break;
+        }
+    }
+
+    return minigap;
 }
 
 void autonomous_car::set_car_controls()
@@ -456,8 +498,10 @@ const string autonomous_car::obstruction_string()
         return "NONE";
     case OBSTRUCTION_STOP_LINE:
         return "STOP_LINE";
-    case OBSTRUCTION_VEHICLE:
-        return "VEHICLE";
+    case OBSTRUCTION_REAR_VEHICLE:
+        return "REAR_VEHICLE";
+    case OBSTRUCTION_FRONT_VEHICLE:
+        return "FRONT_VEHICLE";
     case OBSTRUCTION_END_OF_ROAD:
         return "END_OF_ROAD";
     default:

@@ -17,11 +17,16 @@ private:
     static const int MAX_VIEW_HEIGHT = 390;
     static const int xo = MAX_VIEW_WIDTH/2;
     static const int yo = MAX_VIEW_HEIGHT-1;
-    typedef unsigned char (view_t)[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
     enum state { STATE_DRIVING, 
                  STATE_STOPPED_AT_STOP_LINE, STATE_STOPPED_AT_VEHICLE, STATE_STOPPED_AT_END_OF_ROAD, STATE_STOPPED,
                  STATE_CONTINUING_FROM_STOP };
-    enum obstruction { OBSTRUCTION_NONE, OBSTRUCTION_STOP_LINE, OBSTRUCTION_VEHICLE, OBSTRUCTION_END_OF_ROAD };
+    enum obstruction { OBSTRUCTION_NONE, OBSTRUCTION_STOP_LINE, OBSTRUCTION_REAR_VEHICLE, OBSTRUCTION_FRONT_VEHICLE,
+                       OBSTRUCTION_END_OF_ROAD };
+    typedef unsigned char (view_t)[MAX_VIEW_HEIGHT][MAX_VIEW_WIDTH];
+    typedef struct {
+        int y_last;
+        double slope;
+    } minigap_t;
 
     enum state state;
     long time_in_this_state_us;
@@ -30,7 +35,10 @@ private:
     double x_line[MAX_VIEW_HEIGHT];
 
     void scan_road(view_t & view);
-    double scan_for_center_line(view_t &view, int y, double x_double, bool &end_of_road);
+    double scan_across_for_center_line(view_t &view, int y, double x);
+    enum obstruction scan_across_for_obstruction(view_t &view, int y, double x);
+    bool scan_ahead_for_end_of_road(view_t &view, int y, double x, double slope);
+    minigap_t scan_ahead_for_minigap(view_t &view, int y, double x, double slope);
     void set_car_controls();
 
     void state_change(enum state new_state);

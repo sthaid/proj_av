@@ -10,14 +10,13 @@
 // - repeat above
 
 // xxx comments
-// xxx right turn
-// xxx make wider view,  and taller
+// xxx cmath: check other includes in other files   note this gives floating pt abs, can we accidentally get int version
 
 #include <cassert>
 #include <iomanip>
-#include <cmath>  // xxx check other includes in other files   note this gives floating pt abs
 #include <sstream>
-#include <mutex>
+#include <cmath>  
+#include <random>
 
 #include "autonomous_car.h"
 #include "logging.h"
@@ -67,7 +66,7 @@ void autonomous_car::draw_view(int pid)
 
     w.get_view(get_x(), get_y(), get_dir(), MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view));
     d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, reinterpret_cast<unsigned char *>(view), MAX_VIEW_WIDTH);
-#if 1
+#if 0
     d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
 #else
     d.texture_draw2(t, pid);
@@ -193,7 +192,7 @@ void autonomous_car::update_controls(double microsecs)
         }
         break;
     case STATE_CONTINUING_FROM_STOP:
-        if (time_in_this_state_us > 1000000) {
+        if (time_in_this_state_us > 2000000) { //xxx these times
             state_change(STATE_DRIVING);
         }
         break;
@@ -212,12 +211,16 @@ void autonomous_car::scan_road(view_t &view)
     double           minigap_slope;
     string           minigap_type_str;
     
-    // init
+    // init locals
     max_x_line     = 0;
     y              = yo - 8;  // in front of car
     obs            = OBSTRUCTION_NONE;
     minigap_y_last = NO_VALUE;
     minigap_slope  = 0;
+
+    // initial debug prints
+    DEBUG_ID("world - y,x " << get_y() << " " << get_x() << " dir " << get_dir() << endl);
+    DEBUG_ID("state - " << state_string(state) << endl);
 
     // if a fullgap is valid then
     //  . convert its saved world coordinates to the coords in the current view
@@ -277,7 +280,7 @@ void autonomous_car::scan_road(view_t &view)
         // endif
         if (minigap_y_last != NO_VALUE) {
             x = x_last + minigap_slope;
-            DEBUG_ID("minigap - got y,x = " << y << " " << x << endl);
+            DEBUG_ID("minigap - got y,x = " << y << " " << x << " - minigap_slope " << minigap_slope << endl);
             if (y == minigap_y_last) {
                 DEBUG_ID("minigap - complete" << endl);
                 minigap_y_last = NO_VALUE;
@@ -286,13 +289,13 @@ void autonomous_car::scan_road(view_t &view)
             double fullgap_slope = -(fullgap.x_end_view - fullgap.x_start_view) / 
                                     (fullgap.y_end_view - fullgap.y_start_view);
             x = x_last + fullgap_slope;
-            DEBUG_ID("fullgap - got y,x = " << y << " " << x << endl);
+            DEBUG_ID("fullgap - got y,x = " << y << " " << x << " - fullgap_slope " << fullgap_slope << endl);
         } else {
             x = scan_across_for_center_line(view, y, x_last+slope);
             if (x != NO_VALUE) {
-                DEBUG_ID("scan - got y,x = " << y << " " << x << endl);
+                DEBUG_ID("scan - got y,x = " << y << " " << x << " - slope " << slope << endl);
             } else {
-                DEBUG_ID("scan - got y,x = " << y << " NO_VALUE" << endl);
+                DEBUG_ID("scan - got y,x = " << y << " NO_VALUE" << " - slope " << slope << endl);
             }
         }
 
@@ -353,45 +356,79 @@ void autonomous_car::scan_road(view_t &view)
 
         // if there isn't currently a valid fullgap then
         //    scan ahead for center line(s) that continue straight, left, or right;
-        //    if we need a straight continuation line and straight continuation line was found then
-        //       set the fullgap to the straight continuation line
-        //    else 
-        //       xxx comment
+        //    if continuing from a stop then 
+        //       choose either one of the continuation center lines at random
+        //    else
+        //       choose the straight continuation center line
         //    endif
-        //    if fullgap has been set valid then
+        //    if a continuation center line has been identified then
+        //       initialize the fullgap struct
         //       continue scanning the road
         //    endif
         // endif
         if (!fullgap.valid) {
-            bool choose_straight = true; //xxx
             int y_straight, x_straight, y_left, x_left, y_right, x_right;
+            int fullgap_y_end_view = NO_VALUE, fullgap_x_end_view = NO_VALUE;
+            string choice("none");
 
             scan_ahead_for_continuing_center_lines(view, y, x_last+slope, slope, 
                                                    y_straight, x_straight, 
                                                    y_left, x_left, 
                                                    y_right, x_right);
 
-            if (choose_straight && y_straight != NO_VALUE) {
-                fullgap.x_start_view = x_last;
+            if (state == STATE_CONTINUING_FROM_STOP) {
+                if (y_straight != NO_VALUE || y_left != NO_VALUE || y_right != NO_VALUE) {
+                    while (true) {
+                        static std::default_random_engine generator(microsec_timer());
+                        static std::uniform_int_distribution<int> rand_0_to_2(0,2);
+                        int n = rand_0_to_2(generator);
+                        assert(n >= 0 && n <= 2);
+                        if (n == 0 && y_straight != NO_VALUE) {
+                            fullgap_y_end_view = y_straight;
+                            fullgap_x_end_view = x_straight;
+                            choice = "straight";
+                            break;
+                        }
+                        if (n == 1 && y_left != NO_VALUE) {
+                            fullgap_y_end_view = y_left;
+                            fullgap_x_end_view = x_left;
+                            choice = "left";
+                            break;
+                        }
+                        if (n == 2 && y_right != NO_VALUE) {
+                            fullgap_y_end_view = y_right;
+                            fullgap_x_end_view = x_right;
+                            choice = "right";
+                            break;
+                        }
+                    }
+                }
+            } else {
+                if (y_straight != NO_VALUE) {
+                    fullgap_y_end_view = y_straight;
+                    fullgap_x_end_view = x_straight;
+                    choice = "straight";
+                }
+            }
+
+            if (fullgap_y_end_view != NO_VALUE) {
                 fullgap.y_start_view = y + 1;
-                fullgap.x_end_view   = x_straight;
-                fullgap.y_end_view   = y_straight;
+                fullgap.x_start_view = x_last;
+                fullgap.y_end_view   = fullgap_y_end_view;
+                fullgap.x_end_view   = fullgap_x_end_view;
                 coord_convert_view_to_fixed(fullgap.y_start_view, fullgap.x_start_view, 
                                             fullgap.y_start_fixed, fullgap.x_start_fixed);
                 coord_convert_view_to_fixed(fullgap.y_end_view, fullgap.x_end_view, 
                                             fullgap.y_end_fixed, fullgap.x_end_fixed);
                 fullgap.valid   = true;
-                DEBUG_ID("fullgap - identified straight, " << "\a"   // xxx alarm is temp
+                DEBUG_ID("fullgap - identified - " 
+                         << "CHOICE is " << choice << " - "
                          << "VIEW "  << fullgap.y_start_view << " " << fullgap.x_start_view << " -> "
                                      << fullgap.y_end_view << " " << fullgap.x_end_view << " "
                          << "FIXED " << fullgap.y_start_fixed << " " << fullgap.x_start_fixed << " -> "
                                      << fullgap.y_end_fixed << " " << fullgap.x_end_fixed 
+                         << "\a" // alarm beep
                          << endl);
-            } else {
-                // xxx tbd
-            }
-
-            if (fullgap.valid) {
                 continue;
             }
         }
@@ -660,16 +697,23 @@ void autonomous_car::set_car_controls()
 {
     assert(distance_road_is_clear != NO_VALUE);
 
+    // xxx this routine needs work
+    // - smooth out the steering  and braking
+    // - choose steer target based on speed
+    // - emergency braking
+    // - review and comment equations
+
     // steering control
     double steer_direction;
 
     if (get_speed() == 0) {
         steer_direction = 0;
-    } else if (distance_road_is_clear <= 5) {
+    } else if (distance_road_is_clear < 5) {
         steer_direction = get_steer_ctl();
     } else {
         // xxx the 20 should be a function of speed
-        int steer_target = distance_road_is_clear > 20 ? 20 : distance_road_is_clear - 1;
+        // int steer_target = distance_road_is_clear > 20 ? 20 : distance_road_is_clear - 1;
+        int steer_target = 5;
         steer_direction = atan((x_line[steer_target] + 7 - xo) / (steer_target + 1)) * (180./M_PI);
     }
     set_steer_ctl(steer_direction);

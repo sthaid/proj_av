@@ -374,6 +374,7 @@ bool launch_new_car(display &d, world &w)
     static std::default_random_engine generator(microsec_timer()); 
     static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
     int max_speed = random_uniform_30_to_50(generator);
+    max_speed = 10; // xxx
 
     // create the car
     int id = max_car;

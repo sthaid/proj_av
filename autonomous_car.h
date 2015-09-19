@@ -13,8 +13,8 @@ public:
     virtual void update_controls(double microsecs);
 
 private:
-    static const int MAX_VIEW_WIDTH = 151;
-    static const int MAX_VIEW_HEIGHT = 390;
+    static const int MAX_VIEW_WIDTH = 201;
+    static const int MAX_VIEW_HEIGHT = 400;
     static const int xo = MAX_VIEW_WIDTH/2;
     static const int yo = MAX_VIEW_HEIGHT-1;
     enum state { STATE_DRIVING, 
@@ -56,8 +56,8 @@ private:
     void state_change(enum state new_state);
     const string state_string(enum state s);
     const string obstruction_string(enum obstruction o);
-    void coord_convert_view_to_fixed(double x_view, double y_view, double &x_fixed, double &y_fixed);
-    void coord_convert_fixed_to_view(double x_fixed, double y_fixed, double &x_view, double &y_view);
+    void coord_convert_view_to_fixed(double y_view, double x_view, double &y_fixed, double &x_fixed);
+    void coord_convert_fixed_to_view(double y_fixed, double x_fixed, double &y_view, double &x_view);
 };
 
 #endif

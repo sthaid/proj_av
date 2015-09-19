@@ -4,7 +4,7 @@ AV_OBJS  = av.o  display.o world.o utils.o car.o autonomous_car.o
 EDW_OBJS = edw.o display.o world.o utils.o car.o 
 
 CC = g++
-CPPFLAGS = -std=gnu++11 -Wall -g -O0 $(shell sdl2-config --cflags) 
+CPPFLAGS = -std=gnu++11 -Wall -g -O2 $(shell sdl2-config --cflags) 
 
 #
 # build rules

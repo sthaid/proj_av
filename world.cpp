@@ -156,6 +156,7 @@ void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 }
 
 // -----------------  MISC  ---------------------------------------------------------
+// XXX organization
 
 void world::clear()
 {
@@ -210,7 +211,7 @@ bool world::write(string filename)
     return true;
 }
 
-void world::set_pixel(int x, int y, unsigned char p) 
+void world::set_static_pixel(int x, int y, unsigned char p) 
 {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {
         return;
@@ -221,13 +222,22 @@ void world::set_pixel(int x, int y, unsigned char p)
     d.texture_set_pixel(texture, x, y, p);
 }
 
-unsigned char world::get_pixel(int x, int y)
+unsigned char world::get_static_pixel(int x, int y)
 {
     if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {
         return display::GREEN;
     }
 
-    return pixels[y][x]; // xxx was return static_pixels[y][x];
+    return static_pixels[y][x];
+}
+
+unsigned char world::get_world_pixel(int x, int y)
+{
+    if (x < 0 || x >= WORLD_WIDTH || y < 0 || y >= WORLD_HEIGHT) {
+        return display::GREEN;
+    }
+
+    return pixels[y][x];
 }
 
 void world::cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y)

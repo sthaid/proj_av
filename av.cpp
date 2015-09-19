@@ -365,19 +365,15 @@ bool launch_new_car(display &d, world &w)
 
     // check for clear to launch
     for (int y = yo; y >= yo-12; y--) {
-        if (w.get_pixel(xo,y) != display::BLACK) {
+        if (w.get_world_pixel(xo,y) != display::BLACK) {
             return false;
         }
     }
 
     // choose the car's max speed at random, in range 30 to 50 mph
-#if 1
     static std::default_random_engine generator(microsec_timer()); 
     static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
     int max_speed = random_uniform_30_to_50(generator);
-#else
-    int max_speed = 39; //xxx
-#endif
 
     // create the car
     int id = max_car;

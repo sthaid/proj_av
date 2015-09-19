@@ -26,8 +26,9 @@ public:
     void clear();
     bool read(string filename);
     bool write(string filename);
-    void set_pixel(int x, int y, unsigned char c);
-    unsigned char get_pixel(int x, int y);
+    void set_static_pixel(int x, int y, unsigned char c);
+    unsigned char get_static_pixel(int x, int y);
+    unsigned char get_world_pixel(int x, int y);
     void cvt_coord_pixel_to_world(double pixel_x, double pixel_y, int &world_x, int &world_y);
     void cvt_coord_world_to_pixel(int world_x, int world_y, double &pixel_x, double &pixel_y);
 private:

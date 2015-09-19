@@ -385,7 +385,7 @@ int main(int argc, char **argv)
                     w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH, 
                                                (double)event.val2/PANE_WORLD_HEIGHT, 
                                                x, y);
-                    w.set_pixel(x, y, edit_pixels_color_selection);
+                    w.set_static_pixel(x, y, edit_pixels_color_selection);
                     d.event_play_sound();
                     break;
                 }
@@ -404,6 +404,7 @@ int main(int argc, char **argv)
         //
 
         // delay to complete CYCLE_TIME_US
+        // xxx when creating roads ?
         long end_time_us = microsec_timer();
         long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
@@ -429,7 +430,9 @@ void create_road_slice(class world &w, double x, double y, double dir)
     double dpx = 0.5 * sin((dir+90) * (M_PI/180.0));
 
     for (int i = -26; i <= 26; i++) {
-        w.set_pixel(x+i*dpx, y+i*dpy, display::BLACK);
+        if (w.get_static_pixel(x+i*dpx, y+i*dpy) == display::GREEN) {
+            w.set_static_pixel(x+i*dpx, y+i*dpy, display::BLACK);
+        }
     }
-    w.set_pixel(x,y,display::YELLOW);
+    w.set_static_pixel(x,y,display::YELLOW);
 }

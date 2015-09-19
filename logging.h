@@ -7,7 +7,7 @@
 using std::cout;
 using std::endl;
 
-//#define ENABLE_LOGGING_AT_DEBUG_LEVEL
+#define ENABLE_LOGGING_AT_DEBUG_LEVEL
 
 #define INFO(x) \
     do { \

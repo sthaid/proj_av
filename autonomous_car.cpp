@@ -11,6 +11,7 @@
 
 // xxx comments
 // xxx cmath: check other includes in other files   note this gives floating pt abs, can we accidentally get int version
+// xxx sometimes the stop line is not seen when at a distance, and a fullgap is generated
 
 #include <cassert>
 #include <iomanip>
@@ -719,36 +720,78 @@ void autonomous_car::set_car_controls()
     set_steer_ctl(steer_direction);
     DEBUG_ID("steer_dir " << steer_direction << endl);
 
-    // speed control
-    double speed_target;
-    double speed_current;
-    double speed_ctl_val;
+    //
+    // speed control ...
+    //
+
+    const double K_DESIRED_DECEL        = MIN_SPEED_CTL * 0.33;  // mph per second
+    const double K_DECEL_FACTOR         = 1;
+    const double K_ACCEL_MAX_SPEED_CTL  = MAX_SPEED_CTL * 0.8;
+    const double K_ACCEL_FACTOR         = 0.5;
+
+    // determine adjusted_distance_road_is_clear, which is a slightly reduced
+    // distance_road_is_clear, in mph; this is used in the calculations below so
+    // that the car will stop a few feet before the obstruction
     double adjusted_distance_road_is_clear;
-    const double K_ACCEL = 1.5;
-    const double K_DECEL = 5.0;
-
-    adjusted_distance_road_is_clear = (double)(distance_road_is_clear-5) / 5280;
-    if (adjusted_distance_road_is_clear < 0) {
-        adjusted_distance_road_is_clear = 0;
-    }
-
-    speed_target = sqrt(2. * (-MIN_SPEED_CTL*3600/4) * adjusted_distance_road_is_clear);   // mph
-    if (speed_target > get_max_speed()) {
-        speed_target = get_max_speed();
-    }
-
-    speed_current = get_speed();
-
-    if (speed_target >= speed_current) {
-        speed_ctl_val = (speed_target - speed_current) * K_ACCEL;
+    if (obstruction == OBSTRUCTION_STOP_LINE) {
+        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-2) / 5280;  // miles
     } else {
-        // xxx what about emergency braking
-        speed_ctl_val = (speed_target - speed_current) * K_DECEL;
+        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-5) / 5280;  // miles
+    }
+    if (adjusted_distance_road_is_clear < 0.1 / 5280) {
+        adjusted_distance_road_is_clear = 0.1 / 5280;
     }
 
-    set_speed_ctl(speed_ctl_val);
-    DEBUG_ID("speed_target, speed_current = " << speed_target << " " << speed_current << 
-             " speed_ctl_val = " << speed_ctl_val << endl);
+    // calculate the deceleration needed to stop in the adjusted_distance_road_is_clear
+    // . decel_needed is negative
+    // . A = -V^2 / (2*S)
+    double decel_needed;
+    decel_needed = -(get_speed() * get_speed()) / (2 * adjusted_distance_road_is_clear);
+    decel_needed /= 3600;  // mph per second
+
+    // if the deceleration needed to stop before the obstruction is larger than the K_DESIRED_DECEL 
+    // then 
+    //   decelerate at a slightly larger rate than what is needed to stop in time
+    // else
+    //   determine desired_speed as the max speed that would allow the car to stop when 
+    //    decleration is K_DESIRED_DECEL  (V = sqrt(2*A*S))
+    //   accelerate at a rate proportional to the difference between current and desired speed
+    // endif
+
+    double speed_ctl_val;
+    if (decel_needed < K_DESIRED_DECEL) {
+        speed_ctl_val = K_DECEL_FACTOR * decel_needed;   // mph per second
+
+        DEBUG_ID("decel - speed_ctl_val " << speed_ctl_val 
+                 << " decel_needed " << decel_needed << " road_clear " << adjusted_distance_road_is_clear*5280
+                 << endl);
+    } else {
+        double desired_speed = sqrt(2 * (-K_DESIRED_DECEL*3600) * adjusted_distance_road_is_clear);
+        assert(desired_speed >= get_speed());  // xxx possibly a risky assert
+        if (adjusted_distance_road_is_clear == 0.1 / 5280) {
+            desired_speed = 0;
+        } else if (desired_speed > get_max_speed()) {
+            desired_speed = get_max_speed();
+        }
+
+        speed_ctl_val = (desired_speed - get_speed()) * K_ACCEL_FACTOR;  // mph per second
+        if (speed_ctl_val > K_ACCEL_MAX_SPEED_CTL) {
+            speed_ctl_val = K_ACCEL_MAX_SPEED_CTL;
+        }
+
+        DEBUG_ID("accel - speed_ctl_val " << speed_ctl_val 
+                 << " decel_needed " << decel_needed << " road_clear " << adjusted_distance_road_is_clear*5280
+                 << " desired_speed " << desired_speed << " current_speed " << get_speed() 
+                 << endl);
+    }
+
+    // set the speed control using smoothed value
+    double smoothed_speed_ctl_val;
+    smoothed_speed_ctl_val = (speed_ctl_val + 3 * get_speed_ctl()) / 4;
+    if (abs(smoothed_speed_ctl_val) < .01) {
+        smoothed_speed_ctl_val = 0;
+    }
+    set_speed_ctl(smoothed_speed_ctl_val);
 }
 
 // -----------------  MISC SUPPORT --------------------------------------------------

@@ -103,15 +103,17 @@ void car::static_init(display &d)
 car::car(display &display, world &world, int id_arg, double x_arg, double y_arg, double dir_arg, double speed_arg, double max_speed_arg) 
     : d(display), w(world)
 {
-    id        = id_arg;  
-    x         = x_arg;
-    y         = y_arg;
-    dir       = dir_arg;
-    speed     = speed_arg;
-    max_speed = max_speed_arg;
-    speed_ctl = 0;
-    steer_ctl = 0;
-    failed    = false;
+    id                 = id_arg;  
+    x                  = x_arg;
+    y                  = y_arg;
+    dir                = dir_arg;
+    speed              = speed_arg;
+    max_speed          = max_speed_arg;
+    speed_ctl          = 0;
+    speed_ctl_smoothed = 0;
+    steer_ctl          = 0;
+    steer_ctl_smoothed = 0;
+    failed             = false;
 
     // XXX check max_speed and others in constructor
 }
@@ -241,47 +243,57 @@ void car::draw_dashboard(int pid)
     d.draw_set_color(display::WHITE);
     d.draw_rect(0,0,590,100,pid,2);
 
-    // car id
-    std::ostringstream s;
-    s << id;
-    d.text_draw(s.str(), 0.2, 1.0, pid);
-
     // current speed
-    s.str("");
+    std::ostringstream s;
     s << fixed << setprecision(0) << speed;
-    d.text_draw(s.str(), 1.2, 1.0, pid);
+    d.text_draw(s.str(), 0.5, 1, pid);
+
+    // id and failed_str / 'ok'
+    s.str("");
+    s << id << " ";
+    if (get_failed()) {
+        s << get_failed_str();
+    } else {
+        s << "OK";
+    }
+    d.text_draw(s.str(), 2.1, 1.5, pid, false, 0, 1);
 
     // steering control
-    int x;
+    steer_ctl_smoothed = (steer_ctl + 9 * steer_ctl_smoothed) / 10;
+
     d.draw_set_color(display::WHITE);
-    d.draw_rect(150,25,300,50,pid,2);
+    d.draw_rect(150,10,300,50,pid,2);
 
-    x = 300;
-    d.draw_line(x-1, 20, x-1, 24, pid);
-    d.draw_line(x+0, 20, x+0, 24, pid);
-    d.draw_line(x+1, 20, x+1, 24, pid);
-
-    d.draw_line(x-1, 75, x-1, 79, pid);
-    d.draw_line(x+0, 75, x+0, 79, pid);
-    d.draw_line(x+1, 75, x+1, 79, pid);
+    int x = 300;
+    d.draw_line(x-1, 5, x-1, 9, pid);
+    d.draw_line(x+0, 5, x+0, 9, pid);
+    d.draw_line(x+1, 5, x+1, 9, pid);
+    d.draw_line(x-1, 60, x-1, 64, pid);
+    d.draw_line(x+0, 60, x+0, 64, pid);
+    d.draw_line(x+1, 60, x+1, 64, pid);
 
     d.draw_set_color(display::ORANGE);
-    x = 152 + (steer_ctl - MIN_STEER_CTL) / (MAX_STEER_CTL - MIN_STEER_CTL) * 296;
-    if (x < 152) x = 152;
-    if (x > 447) x = 447;
-    d.draw_line(x-1, 27, x-1, 72, pid);
-    d.draw_line(x+0, 27, x+0, 72, pid);
-    d.draw_line(x+1, 27, x+1, 72, pid);
+    x = 152 + (steer_ctl_smoothed - MIN_STEER_CTL/4) / (MAX_STEER_CTL/4 - MIN_STEER_CTL/4) * 296;
+    if (x < 154) x = 154;
+    if (x > 445) x = 445;
+    d.draw_line(x-2, 12, x-2, 57, pid);
+    d.draw_line(x-1, 12, x-1, 57, pid);
+    d.draw_line(x+0, 12, x+0, 57, pid);
+    d.draw_line(x+1, 12, x+1, 57, pid);
+    d.draw_line(x+2, 12, x+2, 57, pid);
 
     // speed control - brake
     const int SPEED_CONTROL_HEIGHT = 88;
     const int SPEED_CONTROL_Y = 6;
     const int SPEED_CONTROL_BRAKE_X = 465;
+
+    speed_ctl_smoothed = (speed_ctl + 9 * speed_ctl_smoothed) / 10;
+
     d.draw_set_color(display::WHITE);
     d.draw_rect(SPEED_CONTROL_BRAKE_X,SPEED_CONTROL_Y,50,SPEED_CONTROL_HEIGHT,pid,2);
-    if (speed_ctl < 0) {
+    if (speed_ctl_smoothed < 0) {
         d.draw_set_color(display::RED);
-        int height = (speed_ctl / MIN_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
+        int height = (speed_ctl_smoothed / MIN_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
         if (height < 1) height = 1;
         if (height > (SPEED_CONTROL_HEIGHT-4)) height = (SPEED_CONTROL_HEIGHT-4);
         d.draw_filled_rect(SPEED_CONTROL_BRAKE_X+2, SPEED_CONTROL_Y+(SPEED_CONTROL_HEIGHT-2)-height, 46, height, pid);
@@ -291,9 +303,9 @@ void car::draw_dashboard(int pid)
     const int SPEED_CONTROL_GAS_X   = 530;
     d.draw_set_color(display::WHITE);
     d.draw_rect(SPEED_CONTROL_GAS_X,SPEED_CONTROL_Y,50,SPEED_CONTROL_HEIGHT,pid,2);
-    if (speed_ctl > 0) {
+    if (speed_ctl_smoothed > 0) {
         d.draw_set_color(display::GREEN);
-        int height = (speed_ctl / MAX_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
+        int height = (speed_ctl_smoothed / MAX_SPEED_CTL) * (SPEED_CONTROL_HEIGHT-4) + 0.5;
         if (height < 1) height = 1;
         if (height > (SPEED_CONTROL_HEIGHT-4)) height = (SPEED_CONTROL_HEIGHT-4);
         d.draw_filled_rect(SPEED_CONTROL_GAS_X+2, SPEED_CONTROL_Y+(SPEED_CONTROL_HEIGHT-2)-height, 46, height, pid);

@@ -53,7 +53,9 @@ private:
     double speed;
     double max_speed;
     double speed_ctl;
+    double speed_ctl_smoothed;
     double steer_ctl;
+    double steer_ctl_smoothed;
     bool   failed;
     string failed_str;
 };

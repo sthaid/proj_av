@@ -71,7 +71,7 @@ string    message = "";
 int       message_time_us = MAX_MESSAGE_TIME_US;
 
 // cars
-const int     MAX_CAR = 1000;
+const int     MAX_CAR = 100; 
 class car   * car[MAX_CAR];
 int           max_car = 0;
 int           dashboard_and_view_idx = 0;
@@ -106,7 +106,6 @@ int main(int argc, char **argv)
     //
 
     // get options, and args
-    // xxx help option
     while (true) {
         char opt_char = getopt(argc, argv, "n:");
         if (opt_char == -1) {
@@ -116,8 +115,8 @@ int main(int argc, char **argv)
         case 'n': {
             istringstream s(optarg);
             s >> launch_pending;
-            if (s.fail() || !s.eof() || launch_pending < 0 || launch_pending > 30) { 
-                // xxx usage ,  and 30 limit ?
+            if (s.fail() || !s.eof() || launch_pending < 0 || launch_pending > MAX_CAR) { 
+                ERROR("invalid launch_pending '" << s.str() << "', max=" << MAX_CAR << endl);
                 return 1;
             }
             break; }
@@ -374,7 +373,6 @@ bool launch_new_car(display &d, world &w)
     static std::default_random_engine generator(microsec_timer()); 
     static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
     int max_speed = random_uniform_30_to_50(generator);
-    max_speed = 50; // xxx
 
     // create the car
     int id = max_car;

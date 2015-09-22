@@ -1,4 +1,4 @@
-// TEST CASES WITH ONEE CAR
+// XXX test cases
 // - end of road at 45 degrees
 // - end of road straight
 // - stop sign
@@ -6,12 +6,8 @@
 // - straight road with gap
 // - curvy road with gap
 // - intersections
-// TEST CASES WITH 5 CARS
-// - repeat above
 
-// xxx comments
-// xxx cmath: check other includes in other files   note this gives floating pt abs, can we accidentally get int version
-// xxx left is preferred
+// XXX left is preferred
 
 #include <cassert>
 #include <iomanip>
@@ -274,7 +270,7 @@ void autonomous_car::scan_road(view_t &view)
         }
 
         // if slope too large then scan is complete
-        if (abs(slope) > 1) {
+        if (fabs(slope) > 1) {
             DEBUG_ID("done - at y = " << y << ", because of slope " << slope << endl);
             obs = OBSTRUCTION_NONE;
             break;
@@ -504,7 +500,7 @@ enum autonomous_car::obstruction autonomous_car::scan_across_for_obstruction(vie
     enum obstruction obs = OBSTRUCTION_NONE;
     int x = round(x_double);
 
-    // xxx should scan across for N*sqrt(1+slope^2)
+    // XXX should scan across for N*sqrt(1+slope^2)
 
     assert(y >= 0 && y < MAX_VIEW_HEIGHT);
     assert(x >= 0 && x+10 < MAX_VIEW_WIDTH);

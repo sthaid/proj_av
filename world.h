@@ -10,7 +10,7 @@ class world {
 public:
     static const int WORLD_WIDTH = 4096;
     static const int WORLD_HEIGHT = 4096;
-    static const int MAX_GET_VIEW_XY = 1000;  // xxx private ?
+    static const int MAX_GET_VIEW_XY = 1000;  // XXX private ?
     
     static void static_init();
 

@@ -1,7 +1,7 @@
 #include <fstream>
 #include <cassert>
-#include <memory.h>
-#include <math.h>
+#include <cstring>
+#include <cmath>  
 
 #include "world.h"
 #include "logging.h"
@@ -156,7 +156,6 @@ void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 }
 
 // -----------------  MISC  ---------------------------------------------------------
-// XXX organization
 
 void world::clear()
 {

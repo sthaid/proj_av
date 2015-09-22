@@ -1,7 +1,7 @@
 #ifndef __DISPLAY_H__
 #define __DISPLAY_H__
 
-#include <string>  // XXX review how includes are used 
+#include <string>
 
 using std::string;
 

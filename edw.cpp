@@ -1,7 +1,7 @@
 #include <sstream>
-#include <unistd.h>
-#include <string.h>
-#include <math.h>
+#include <cmath>  
+
+#include <unistd.h>  // for getopt
 
 #include "display.h"
 #include "world.h"
@@ -40,12 +40,12 @@ const double MIN_ZOOM    = (1.0 / ZOOM_FACTOR) + .01;
 double       zoom = 1.0; 
 
 // simulation cycle time
-const int CYCLE_TIME_US = 50000;  // 50 ms
+const int CREATE_ROADS_CYCLE_TIME_US = 25000;
 
 // pane message box 
 const int MAX_MESSAGE_TIME_US = 1000000;   
 string    message = "";
-int       message_time_us = MAX_MESSAGE_TIME_US;
+long      message_start_time_us;
 
 // create roads mode
 const int INITIAL_CREATE_ROAD_X = 2048;
@@ -76,7 +76,7 @@ display::color edit_pixels_color_selection = display::GREEN;
 inline void display_message(string msg)
 {
     message = msg;
-    message_time_us = 0;
+    message_start_time_us = microsec_timer();
 }
 
 // -----------------  MAIN  ------------------------------------------------------------------------
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 
             s.str("");
             if (create_roads_run) {
-                int mph = distance / CYCLE_TIME_US * (3600000000.0 / 5280.0);
+                int mph = distance / CREATE_ROADS_CYCLE_TIME_US * (3600000000.0 / 5280.0);
                 s << "RUNNING - " << mph << " MPH";
             } else {
                 s << "STOPPED";
@@ -199,9 +199,8 @@ int main(int argc, char **argv)
         }
 
         // draw the message box
-        if (message_time_us < MAX_MESSAGE_TIME_US) {
+        if (microsec_timer() - message_start_time_us < MAX_MESSAGE_TIME_US) {
             d.text_draw(message, 0, 0, PANE_MSG_BOX_ID);
-            message_time_us += CYCLE_TIME_US;
         }
 
         // draw and register events
@@ -400,23 +399,18 @@ int main(int argc, char **argv)
         } while (0);
 
         //
-        // DELAY TO COMPLETE THE TARGET CYCLE TIME
+        // DELAY 
         //
 
-        // delay to complete CYCLE_TIME_US
-        // xxx when creating roads ?
-        long end_time_us = microsec_timer();
-        long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
-        microsec_sleep(delay_us);
-
-#if 1
-        // oncer every 10 secs, debug print this cycle's processing time
-        static int count;
-        if (++count == 10000000 / CYCLE_TIME_US) {
-            count = 0;
-            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
+        if (mode == CREATE_ROADS) {
+            // CREATE_ROAGS mode: delay to complete CREATE_ROADS_CYCLE_TIME_US
+            long end_time_us = microsec_timer();
+            long delay_us = CREATE_ROADS_CYCLE_TIME_US - (end_time_us - start_time_us);
+            microsec_sleep(delay_us);
+        } else { 
+            // all other modes delay for 10 ms
+            microsec_sleep(10000); 
         }
-#endif
     }
 
     return 0;

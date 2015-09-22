@@ -11,11 +11,10 @@ public:
 
     static void static_init(display &d);
 
-    const double MAX_STEER_CTL = 45;    // degrees   XXX should these const be private
+    const double MAX_STEER_CTL = 45;    // degrees
     const double MIN_STEER_CTL = -45;   // degrees
     const double MAX_SPEED_CTL = 10;    // mph/sec
     const double MIN_SPEED_CTL = -30;   // mph/sec
-    const double CAR_LENGTH    = 10;    // ft   XXX wheel base  PRIVATE
 
     world &get_world() { return w; }
     display &get_display() { return d; }

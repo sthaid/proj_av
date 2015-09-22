@@ -1,8 +1,8 @@
 #include <sstream>
 #include <cassert>
 #include <iomanip>
-#include <math.h>
-#include <memory.h>
+#include <cmath>
+#include <cstring>
 
 #include "car.h"
 #include "logging.h"
@@ -165,12 +165,15 @@ void car::set_speed_ctl(double val)
 
 void car::update_mechanics(double microsecs)
 {
+    const double WHEEL_BASE_LENGTH = 10;  // ft 
+
     double distance;
     double delta_dir;
 
-    // XXX check for crash due to 
+    // XXX check for crash due to:
     // - over steering
     // - taking a turn at too high speed
+    // - others?
 
     // if car has failed then do nothing
     if (get_failed()) {
@@ -183,7 +186,7 @@ void car::update_mechanics(double microsecs)
     y += distance * sin((dir+270.) * (M_PI/180.0));
 
     // update car direction based upon steering control 
-    delta_dir = atan(distance / CAR_LENGTH * sin(steer_ctl*(M_PI/180.))) * (180./M_PI);
+    delta_dir = atan(distance / WHEEL_BASE_LENGTH * sin(steer_ctl*(M_PI/180.))) * (180./M_PI);
     dir = sanitize_direction(dir + delta_dir);
     
     // update car speed based on speed control 
@@ -260,6 +263,9 @@ void car::draw_dashboard(int pid)
 
     // steering control
     steer_ctl_smoothed = (steer_ctl + 9 * steer_ctl_smoothed) / 10;
+    if (fabs(steer_ctl_smoothed) < .1) {
+        steer_ctl_smoothed = 0;
+    }
 
     d.draw_set_color(display::WHITE);
     d.draw_rect(150,10,300,50,pid,2);
@@ -288,6 +294,9 @@ void car::draw_dashboard(int pid)
     const int SPEED_CONTROL_BRAKE_X = 465;
 
     speed_ctl_smoothed = (speed_ctl + 9 * speed_ctl_smoothed) / 10;
+    if (fabs(speed_ctl_smoothed) < .1) {
+        speed_ctl_smoothed = 0;
+    }
 
     d.draw_set_color(display::WHITE);
     d.draw_rect(SPEED_CONTROL_BRAKE_X,SPEED_CONTROL_Y,50,SPEED_CONTROL_HEIGHT,pid,2);

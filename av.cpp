@@ -1,11 +1,10 @@
-// XXX O0 in Makefile
 #include <sstream>
 #include <thread>
 #include <atomic>
 #include <condition_variable>
 #include <random>
-#include <unistd.h>
-#include <string.h>
+
+#include <unistd.h>  // for getopt
 
 #include "display.h"
 #include "world.h"
@@ -68,7 +67,7 @@ const int CYCLE_TIME_US = 50000;  // 50 ms
 // pane message box 
 const int MAX_MESSAGE_TIME_US = 1000000;
 string    message = "";
-int       message_time_us = MAX_MESSAGE_TIME_US;
+long      message_start_time_us;
 
 // cars
 const int     MAX_CAR = 100; 
@@ -94,7 +93,7 @@ void car_update_controls_thread(int id);
 inline void display_message(string msg)
 {
     message = msg;
-    message_time_us = 0;
+    message_start_time_us = microsec_timer();
 }
 
 // -----------------  MAIN  ------------------------------------------------------------------------
@@ -228,9 +227,8 @@ int main(int argc, char **argv)
         }
 
         // draw the message box
-        if (message_time_us < MAX_MESSAGE_TIME_US) {
+        if (microsec_timer() - message_start_time_us < MAX_MESSAGE_TIME_US) {
             d.text_draw(message, 0, 0, PANE_MSG_BOX_ID);
-            message_time_us += CYCLE_TIME_US;
         }
 
         // draw and register events
@@ -330,7 +328,7 @@ int main(int argc, char **argv)
         long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
         microsec_sleep(delay_us);
 
-#if 1  //xxx
+#if 1
         // oncer every 10 secs, debug print this cycle's processing tie
         static int count;
         if (++count == 10000000 / CYCLE_TIME_US) {

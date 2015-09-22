@@ -11,8 +11,7 @@
 
 // xxx comments
 // xxx cmath: check other includes in other files   note this gives floating pt abs, can we accidentally get int version
-// xxx sometimes the stop line is not seen when at a distance, and a fullgap is generated
-// XXX xxx clear fullgap when continuing from a stop
+// xxx left is preferred
 
 #include <cassert>
 #include <iomanip>
@@ -26,6 +25,18 @@
 
 using std::ostringstream;
 
+#define INFO_ID(x) \
+    do { \
+        INFO("ID " << get_id() << ": " << x); \
+    } while (0)
+#define WARNING_ID(x) \
+    do { \
+        WARNING("ID " << get_id() << ": " << x); \
+    } while (0)
+#define ERROR_ID(x) \
+    do { \
+        ERROR("ID " << get_id() << ": " << x); \
+    } while (0)
 #define DEBUG_ID(x) \
     do { \
         DEBUG("ID " << get_id() << ": " << x); \
@@ -172,9 +183,12 @@ void autonomous_car::update_controls(double microsecs)
     case STATE_STOPPED_AT_STOP_LINE:
         if (time_in_this_state_us > 1000000) {
             state_change(STATE_CONTINUING_FROM_STOP);
-            if (fullgap.valid) {  // xxx more comments here about why
-                                  // xxx test this
-                WARNING("\aXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX clearing fullgap.valid when continuing from stop" << endl);
+            // Should not usually have fullgap.valid when stopped at stop line, because scan road
+            // should have seen the stop line and stopped scanning. However, if the stop line is not
+            // pronounced, then scan road can sometimes not see it and init a fullgap following the
+            // stop line. This check clears the fullgap if that has occurred.
+            if (fullgap.valid) {
+                WARNING_ID("clearing fullgap.valid when continuing from stop" << endl);
                 fullgap.valid = false;
             }
         }
@@ -193,7 +207,7 @@ void autonomous_car::update_controls(double microsecs)
         }
         break;
     case STATE_CONTINUING_FROM_STOP:
-        if (time_in_this_state_us > 2000000) {  // xxx can this be lower
+        if (time_in_this_state_us > 2000000) {
             state_change(STATE_DRIVING);
         }
         break;
@@ -211,13 +225,15 @@ void autonomous_car::scan_road(view_t &view)
     int              minigap_y_last;
     double           minigap_slope;
     string           minigap_type_str;
+    bool             end_of_road_detected;
     
     // init locals
-    max_x_line     = 0;
-    y              = yo - 8;  // in front of car
-    obs            = OBSTRUCTION_NONE;
-    minigap_y_last = NO_VALUE;
-    minigap_slope  = 0;
+    max_x_line           = 0;
+    y                    = yo - 8;  // in front of car
+    obs                  = OBSTRUCTION_NONE;
+    minigap_y_last       = NO_VALUE;
+    minigap_slope        = 0;
+    end_of_road_detected = false;
 
     // initial debug prints
     DEBUG_ID("world - y,x " << get_y() << " " << get_x() << " dir " << get_dir() << endl);
@@ -274,6 +290,8 @@ void autonomous_car::scan_road(view_t &view)
 
         // if y is in minigap then
         //   determine x line location based on minigap slope
+        // else if end of road detected then
+        //   determine x line location based on slope
         // else if y is in a fullgap then
         //   determine x line location based on fullgap slope
         // else
@@ -286,6 +304,9 @@ void autonomous_car::scan_road(view_t &view)
                 DEBUG_ID("minigap - complete" << endl);
                 minigap_y_last = NO_VALUE;
             }
+        } else if (end_of_road_detected) {
+            x = x_last + slope;
+            DEBUG_ID("end_of_road_detected - got y,x = " << y << " " << x << " - slope " << slope << endl);
         } else if (fullgap.valid && y < fullgap.y_start_view && y > fullgap.y_end_view) {
             double fullgap_slope = -(fullgap.x_end_view - fullgap.x_start_view) / 
                                     (fullgap.y_end_view - fullgap.y_start_view);
@@ -331,19 +352,6 @@ void autonomous_car::scan_road(view_t &view)
             continue;
         }
 
-        // check for end of road at the next several values of y
-        // if end of road detected
-        //   set obsttuction to end of road
-        //   break
-        // endif
-        if (scan_ahead_for_end_of_road(view, y, x_last+slope, slope)) {
-// xxx need to include distance to end of road somehow
-// xxx maybe just can't do this, shouldn't be setting obstruction on a scan ahead
-            DEBUG_ID("done - at y = " << y << ", because end of road detected" << endl);
-            obs = OBSTRUCTION_END_OF_ROAD;
-            break;
-        }
-
         // check for mini gap by trying to locate center line at next several values of y;
         // if minigap found then
         //   continue
@@ -354,6 +362,16 @@ void autonomous_car::scan_road(view_t &view)
                      " minigap_y_last = " << minigap_y_last << 
                      " minigap_slope = " << minigap_slope << 
                      " minigap_type_str = " << minigap_type_str << endl);
+            continue;
+        }
+
+        // check for end of road at the next several values of y
+        // if end of road detected
+        //   continue
+        // endif
+        end_of_road_detected = scan_ahead_for_end_of_road(view, y, x_last+slope, slope);
+        if (end_of_road_detected) {
+            DEBUG_ID("end_of_road_detected - start" << endl);
             continue;
         }
 
@@ -386,7 +404,6 @@ void autonomous_car::scan_road(view_t &view)
                         static std::uniform_int_distribution<int> rand_0_to_2(0,2);
                         int n = rand_0_to_2(generator);
                         assert(n >= 0 && n <= 2);
-                        //n = 1; // xxx temp
                         if (n == 0 && y_straight != NO_VALUE) {
                             fullgap_y_end_view = y_straight;
                             fullgap_x_end_view = x_straight;
@@ -431,7 +448,7 @@ void autonomous_car::scan_road(view_t &view)
                                      << fullgap.y_end_view << " " << fullgap.x_end_view << " "
                          << "FIXED " << fullgap.y_start_fixed << " " << fullgap.x_start_fixed << " -> "
                                      << fullgap.y_end_fixed << " " << fullgap.x_end_fixed 
-                         << "xxx" // alarm beep
+                         << "\a" // alarm beep
                          << endl);
                 continue;
             }
@@ -522,7 +539,7 @@ enum autonomous_car::obstruction autonomous_car::scan_across_for_obstruction(vie
 
 bool autonomous_car::scan_ahead_for_end_of_road(view_t &view, int y, double x_double, double slope)
 {
-    for (int y_idx = y; y_idx >= y-4; y_idx--) {
+    for (int y_idx = y; y_idx >= y-10; y_idx--) {
         int x = round(x_double);
 
         assert(y_idx >= 0 && y_idx < MAX_VIEW_HEIGHT);
@@ -701,69 +718,59 @@ void autonomous_car::set_car_controls()
 {
     assert(distance_road_is_clear != NO_VALUE);
 
-    // XXX REVIEW AND CLEAN UP
-
-    // xxx this routine needs work
-    // - smooth out the steering  and braking
-    // - choose steer target based on speed
-    // - emergency braking
-    // - review and comment equations
-
     // ---------------------
     // steering control ...
     // ---------------------
 
-    // steering control
-    double steer_direction;
+    // controls how far ahead is the point that the car is being steered toward
+    const double K_STEER_DISTANCE_FACTOR = 0.5;
 
+    // calculate steer_ctl_val, which is the direction of the front wheels in degrees
+    double steer_ctl_val;
     if (get_speed() == 0) {
-        steer_direction = 0;
-        DEBUG_ID("steer - direction " << steer_direction << ", speed is zero" << endl);
-    } else if (distance_road_is_clear < 5) {
-        //steer_direction = get_steer_ctl();
-        steer_direction = 0;
-        DEBUG_ID("steer - direction " << steer_direction << ", low distance_road_is_clear" << endl);
+        steer_ctl_val = 0;
+        DEBUG_ID("steer - direction " << steer_ctl_val << ", speed is zero" << endl);
+    } else if (distance_road_is_clear <= 5) {
+        steer_ctl_val = get_steer_ctl();
+        DEBUG_ID("steer - direction " << steer_ctl_val << ", low distance_road_is_clear" << endl);
     } else {
-        //int steer_distance = distance_road_is_clear / 6;
-        int steer_distance = get_speed() / 2;  // xxx const
+        int steer_distance = get_speed() * K_STEER_DISTANCE_FACTOR;
         if (steer_distance < 5) {
             steer_distance = 5;
         } 
         if (steer_distance >= distance_road_is_clear) {
             steer_distance = distance_road_is_clear - 1;
         }
-        steer_direction = atan((x_line[steer_distance] + 7 - xo) / steer_distance) * (180./M_PI);
-        DEBUG_ID("steer - direction " << steer_direction << ", steer_distance " << steer_distance << 
+        steer_ctl_val = atan((x_line[steer_distance] + 7 - xo) / steer_distance) * (180./M_PI);
+        DEBUG_ID("steer - direction " << steer_ctl_val << ", steer_distance " << steer_distance << 
                  " road_clear " << distance_road_is_clear << " speed " << get_speed() << endl);
     }
 
-    // xxx smooth
-#if 1
-    set_steer_ctl(steer_direction);
-#else
-    double smoothed_steer_direction;
-    smoothed_steer_direction = (steer_direction + 3 * get_steer_ctl()) / 4;
-    if (abs(smoothed_steer_direction) < .01) {
-        smoothed_steer_direction = 0;
+    // limit steer_ctl_val to allowed range
+    if (steer_ctl_val < MIN_STEER_CTL) {
+        steer_ctl_val = MIN_STEER_CTL;
+    } else if (steer_ctl_val > MAX_STEER_CTL) {
+        steer_ctl_val = MAX_STEER_CTL;
     }
-    set_steer_ctl(smoothed_steer_direction);
-#endif
+
+    // set steering control
+    set_steer_ctl(steer_ctl_val);
 
     // ---------------------
     // speed control ...
     // ---------------------
 
-    // xxx comments on these constants
-
+    // normal braking, for example to come to stop at a stop line
     const double K_DESIRED_DECEL = MIN_SPEED_CTL * 0.33;  // mph per second
+    // control how quickly the car accelerates to a desired speed
     const double K_ACCEL_FACTOR  = 0.5;
 
     // determine adjusted_distance_road_is_clear, which is a slightly reduced
-    // distance_road_is_clear, in mph; this is used in the calculations below so
+    // distance_road_is_clear; this is used in the calculations below so
     // that the car will stop a few feet before the obstruction
     double adjusted_distance_road_is_clear;
-    if (obstruction == OBSTRUCTION_STOP_LINE) { //xxx get rid of if 
-        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-2) / 5280;  // miles
+    if (obstruction == OBSTRUCTION_STOP_LINE) {
+        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-3) / 5280;  // miles
     } else {
         adjusted_distance_road_is_clear = (double)(distance_road_is_clear-5) / 5280;  // miles
     }
@@ -777,6 +784,8 @@ void autonomous_car::set_car_controls()
     decel_needed = -(get_speed() * get_speed()) / (2 * adjusted_distance_road_is_clear);
     decel_needed /= 3600;  // mph per second
 
+    // calculate the speed_ctl_val, which is the desired acceleration (negative for decel) in mph/sec
+    //
     // if the deceleration needed to stop before the obstruction is larger than the K_DESIRED_DECEL 
     // then 
     //   decelerate at a rate needed to stop in time
@@ -785,21 +794,21 @@ void autonomous_car::set_car_controls()
     //    decleration is K_DESIRED_DECEL  (V = sqrt(2*A*S))
     //   accelerate at a rate proportional to the difference between current and desired speed
     // endif
-
     double speed_ctl_val;
     if (decel_needed < K_DESIRED_DECEL) {
         speed_ctl_val = decel_needed;   // mph per second
-
         DEBUG_ID("decel - speed_ctl_val " << speed_ctl_val 
                  << " decel_needed " << decel_needed << " road_clear " << adjusted_distance_road_is_clear*5280
                  << endl);
     } else {
-        double desired_speed = sqrt(2 * (-K_DESIRED_DECEL*3600) * adjusted_distance_road_is_clear);
-        assert(desired_speed >= get_speed());  // xxx possibly a risky assert
+        double desired_speed;
         if (adjusted_distance_road_is_clear == 0.1 / 5280) {
             desired_speed = 0;
-        } else if (desired_speed > get_max_speed()) {
-            desired_speed = get_max_speed();
+        } else {
+            desired_speed = sqrt(2 * (-K_DESIRED_DECEL*3600) * adjusted_distance_road_is_clear);
+            if (desired_speed > get_max_speed()) {
+                desired_speed = get_max_speed();
+            }
         }
 
         speed_ctl_val = (desired_speed - get_speed()) * K_ACCEL_FACTOR;  // mph per second
@@ -817,14 +826,8 @@ void autonomous_car::set_car_controls()
         speed_ctl_val = MAX_SPEED_CTL;
     }
 
-// XXX just smooth the display ??
-    // set the speed control using smoothed value
-    double smoothed_speed_ctl_val;
-    smoothed_speed_ctl_val = (speed_ctl_val + 3 * get_speed_ctl()) / 4;
-    if (abs(smoothed_speed_ctl_val) < .01) {
-        smoothed_speed_ctl_val = 0;
-    }
-    set_speed_ctl(smoothed_speed_ctl_val);
+    // set the speed control
+    set_speed_ctl(speed_ctl_val);
 }
 
 // -----------------  MISC SUPPORT --------------------------------------------------

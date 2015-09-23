@@ -1,3 +1,4 @@
+// XXX delete a car
 #include <sstream>
 #include <thread>
 #include <atomic>
@@ -70,7 +71,7 @@ string    message = "";
 long      message_start_time_us;
 
 // cars
-const int     MAX_CAR = 100; 
+const int     MAX_CAR = 300; 
 class car   * car[MAX_CAR];
 int           max_car = 0;
 int           dashboard_and_view_idx = 0;
@@ -141,7 +142,7 @@ int main(int argc, char **argv)
     display_message(success ? "READ SUCCESS" : "READ FAILURE");
 
     // create threads to update car controls
-    car_update_controls_idx = max_car;
+    car_update_controls_idx = MAX_CAR;
     for (int i = 0; i < MAX_CAR_UPDATE_CONTROLS_THREAD; i++) {
         car_update_controls_thread_id[i] = thread(car_update_controls_thread, i);
     }

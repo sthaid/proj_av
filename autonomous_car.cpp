@@ -439,7 +439,10 @@ void autonomous_car::scan_road(view_t &view)
                                             fullgap.y_end_fixed, fullgap.x_end_fixed);
                 fullgap.valid   = true;
                 DEBUG_ID("fullgap - identified - " 
-                         << "CHOICE is " << choice << " - "
+                         << (y_left != NO_VALUE ? 'L' : 'x')
+                         << (y_straight != NO_VALUE ? 'S' : 'x')
+                         << (y_right != NO_VALUE ? 'R' : 'x')
+                         << " - CHOICE is " << choice << " - "
                          << "VIEW "  << fullgap.y_start_view << " " << fullgap.x_start_view << " -> "
                                      << fullgap.y_end_view << " " << fullgap.x_end_view << " "
                          << "FIXED " << fullgap.y_start_fixed << " " << fullgap.x_start_fixed << " -> "
@@ -616,22 +619,30 @@ void autonomous_car::scan_ahead_for_continuing_center_lines(
     // loop over expanding perimetrs
     for (r = 7; r < 40; r++) {
         gen_xy_phase = 0;
-        x = x_start - r;
-        y = y_start + 1;
+        y = y_start - r;
+        x = x_start;
 
         while (true) {
             // generate x,y
+            // XXX comments
             if (gen_xy_phase == 0) {
-                y--;
-                if (y == y_start - r) {
+                x--;
+                if (x == x_start - r) {
                     gen_xy_phase++;
                 }
             } else if (gen_xy_phase == 1) {
+                y++;
+                if (y == y_start + 1) {
+                    y = y_start - r;
+                    x = x_start;
+                    gen_xy_phase++;
+                }
+            } else if (gen_xy_phase == 2) {
                 x++;
                 if (x == x_start + r) {
                     gen_xy_phase++;
                 }
-            } else if (gen_xy_phase == 2) {
+            } else if (gen_xy_phase == 3) {
                 y++;
                 if (y == y_start + 1) {
                     break;
@@ -692,21 +703,35 @@ void autonomous_car::scan_ahead_for_continuing_center_lines(
     //    and categorize the continuing center line as either a left turn, right turn, or 
     //    straight continuation
     // endloop
+    DEBUG_ID("cont_line - search started at" << 
+             " y,x " << y_start << " " << x_start <<
+             " angle_start " << angle_start <<
+             endl);
     for (int i = 0; i < max_found_line; i++) {
         double slope, angle;
-        slope = (double)(found_line[i].x_first - x_start + slope_start) / (y_start - found_line[i].y_first + 1);
+        string direction;
+
+        slope = -(double)(found_line[i].x_first - (x_start-slope_start)) / (found_line[i].y_first - (y_start+1));
         angle = atan(slope) * (180./M_PI);
 
-        if (angle - angle_start < -15) { 
+        if (angle - angle_start < -20) { 
             y_left = found_line[i].y_first;
             x_left = found_line[i].x_first;
-        } else if (angle - angle_start > 15) { 
+            direction = "left";
+        } else if (angle - angle_start > 20) { 
             y_right = found_line[i].y_first;
             x_right = found_line[i].x_first;
+            direction = "right";
         } else {
             y_straight = found_line[i].y_first;
             x_straight = found_line[i].x_first;
+            direction = "straight";
         }
+
+        DEBUG_ID("cont_line - " << direction << 
+                 " y,x " << found_line[i].y_first << " " << found_line[i].x_first <<
+                 " angle-to-cont-line " << angle-angle_start <<
+                 endl);
     }
 }
 
@@ -765,11 +790,7 @@ void autonomous_car::set_car_controls()
     // distance_road_is_clear; this is used in the calculations below so
     // that the car will stop a few feet before the obstruction
     double adjusted_distance_road_is_clear;
-    if (obstruction == OBSTRUCTION_STOP_LINE) {
-        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-3) / 5280;  // miles
-    } else {
-        adjusted_distance_road_is_clear = (double)(distance_road_is_clear-5) / 5280;  // miles
-    }
+    adjusted_distance_road_is_clear = (double)(distance_road_is_clear-5) / 5280; 
     if (adjusted_distance_road_is_clear < 0.1 / 5280) {
         adjusted_distance_road_is_clear = 0.1 / 5280;
     }

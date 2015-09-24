@@ -557,12 +557,12 @@ void display::texture_clr_pixel(struct texture * t, int x, int y)
 
 void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, unsigned char * pixels, int pitch)
 {
-    unsigned int raw_pixels[100000];
-    unsigned int * rp = raw_pixels;
+    unsigned int * raw_pixels;
+    unsigned int * rp;
     SDL_Rect rect;
 
-    // XXX should allocate memory instead of fixed array
-    assert(w*h <= 100000);
+    raw_pixels = new unsigned int [w*h];
+    rp = raw_pixels;
 
     rect.x = x;
     rect.y = y;
@@ -577,6 +577,8 @@ void display::texture_set_rect(struct texture * t, int x, int y, int w, int h, u
     }
 
     SDL_UpdateTexture(reinterpret_cast<SDL_Texture*>(t), &rect, raw_pixels, 4*w);
+
+    delete [] raw_pixels;
 }
 
 void display::texture_destroy(struct texture * t)

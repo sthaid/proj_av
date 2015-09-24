@@ -10,7 +10,6 @@ class world {
 public:
     static const int WORLD_WIDTH = 4096;
     static const int WORLD_HEIGHT = 4096;
-    static const int MAX_GET_VIEW_XY = 1000;  // XXX private ?
     
     static void static_init();
 
@@ -46,6 +45,7 @@ private:
     int max_placed_object_list;
 
     // get view 
+    static const int MAX_GET_VIEW_XY = 500;
     static short get_view_dx_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
     static short get_view_dy_tbl[360][MAX_GET_VIEW_XY][MAX_GET_VIEW_XY];
 

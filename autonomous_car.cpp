@@ -1,14 +1,3 @@
-// XXX test cases
-// - end of road at 45 degrees
-// - end of road straight
-// - stop sign
-// - curvy road
-// - straight road with gap
-// - curvy road with gap
-// - intersections
-
-// XXX left is preferred
-
 #include <cassert>
 #include <iomanip>
 #include <sstream>
@@ -81,7 +70,7 @@ void autonomous_car::draw_view(int pid)
     d.texture_draw2(t, pid);
 #endif
 
-    d.text_draw("FRONT", 0, 0, pid, false, 0, 1, true);
+    d.text_draw("AUTONOMOUS CAR", 0, 0, pid, false, 0, 1, true);
 }
 
 // -----------------  DRAW DASHBOARD VIRTUAL FUNCTION  -----------------------------
@@ -624,7 +613,6 @@ void autonomous_car::scan_ahead_for_continuing_center_lines(
 
         while (true) {
             // generate x,y
-            // XXX comments
             if (gen_xy_phase == 0) {
                 x--;
                 if (x == x_start - r) {

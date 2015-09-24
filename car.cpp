@@ -115,7 +115,16 @@ car::car(display &display, world &world, int id_arg, double x_arg, double y_arg,
     steer_ctl_smoothed = 0;
     failed             = false;
 
-    // XXX check max_speed and others in constructor
+    sanitize_direction(dir);
+
+    if (x < 0 || x >= world::WORLD_WIDTH ||
+        y < 0 || y >= world::WORLD_HEIGHT ||
+        dir < 0 || dir >= 360 ||
+        speed < 0 || speed > max_speed ||
+        max_speed <= 0 || max_speed > 60)
+    {
+        set_failed("INVALID_PARAM");
+    }
 }
 
 car::~car()
@@ -218,8 +227,8 @@ void car::place_car_in_world()
 
 void car::draw_view(int pid)
 {
-    const int MAX_VIEW_WIDTH = 150;
-    const int MAX_VIEW_HEIGHT = 390;
+    const int MAX_VIEW_WIDTH = 201;
+    const int MAX_VIEW_HEIGHT = 400;
     static struct display::texture * t;
     unsigned char view[MAX_VIEW_WIDTH*MAX_VIEW_HEIGHT];
 
@@ -230,9 +239,9 @@ void car::draw_view(int pid)
 
     w.get_view(x, y, dir, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view);
     d.texture_set_rect(t, 0, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT, view, MAX_VIEW_WIDTH);
-    d.texture_draw2(t, pid, 300-MAX_VIEW_WIDTH/2, 0, MAX_VIEW_WIDTH, MAX_VIEW_HEIGHT);
+    d.texture_draw2(t, pid);
 
-    d.text_draw("front", 0, 0, pid, false, 0, 1, true);
+    d.text_draw("BASE CAR", 0, 0, pid, false, 0, 1, true);
 }
 
 void car::draw_dashboard(int pid)

@@ -138,9 +138,11 @@ void world::draw(int pid, int center_x_arg, int center_y_arg, double zoom_arg)
 
 void world::get_view(int x, int y, double dir, int W, int H, unsigned char * p)
 {
-    int d = sanitize_direction(dir + 0.5);
+    int d = sanitize_direction(round(dir));
+
     assert(d >= 0 && d <= 359);
-    // XXX assert W and H not too big
+    assert(H <= MAX_GET_VIEW_XY);
+    assert(W <= MAX_GET_VIEW_XY);
 
     for (int h = H-1; h >= 0; h--) {
         for (int w = -W/2; w < -W/2+W; w++) {

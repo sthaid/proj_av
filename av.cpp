@@ -262,7 +262,7 @@ int main(int argc, char **argv)
             } 
         }
         ostringstream s;
-        s << "ACTV " << active_count << "  FAIL " << failed_count << " PEND " << launch_pending;
+        s << "ACTV " << active_count << " FAIL " << failed_count << " PEND " << launch_pending;
         d.text_draw(s.str(), 1, 0, PANE_PGM_CTL_ID);
 
         // finish, updates the display

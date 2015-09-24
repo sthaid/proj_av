@@ -7,7 +7,7 @@
 class car {
 public:
     car(display &display, world &w, int id, double x, double y, double dir, double speed, double max_speed);
-    ~car();
+    virtual ~car();
 
     static void static_init(display &d);
 

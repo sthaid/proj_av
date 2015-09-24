@@ -761,7 +761,7 @@ struct display::event display::event_poll()
         // - updates win_width, win_height, win_minimized
         switch (sdl_event.type) {
         case SDL_MOUSEBUTTONDOWN: {
-            INFO ("MOUSE DOWN which=" << sdl_event.button.which << 
+            DEBUG("got evevnt SDL_MOUSEBUTTONDOWN - which=" << sdl_event.button.which << 
                   " button=" << (sdl_event.button.button == SDL_BUTTON_LEFT   ? "LEFT" :
                                  sdl_event.button.button == SDL_BUTTON_MIDDLE ? "MIDDLE" :
                                  sdl_event.button.button == SDL_BUTTON_RIGHT  ? "RIGHT" :
@@ -795,7 +795,6 @@ struct display::event display::event_poll()
                     if (eid_tbl[eid].et == ET_MOUSE_MOTION &&
                         EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
                     {
-                        INFO("GOT MOUSE MOTION for eid " << eid << endl);
                         mouse_motion_eid = eid;
                         mouse_motion_x = sdl_event.button.x;
                         mouse_motion_y = sdl_event.button.y;
@@ -830,7 +829,7 @@ struct display::event display::event_poll()
             break; }
 
         case SDL_MOUSEBUTTONUP: {
-            DEBUG("MOUSE UP which=" << sdl_event.button.which << 
+            DEBUG("got event SDL_MOUSEBUTTONUP - which=" << sdl_event.button.which << 
                   " button=" << (sdl_event.button.button == SDL_BUTTON_LEFT   ? "LEFT" :
                                  sdl_event.button.button == SDL_BUTTON_MIDDLE ? "MIDDLE" :
                                  sdl_event.button.button == SDL_BUTTON_RIGHT  ? "RIGHT" :

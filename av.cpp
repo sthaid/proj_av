@@ -1,4 +1,3 @@
-// XXX delete a car
 #include <sstream>
 #include <thread>
 #include <atomic>
@@ -73,10 +72,10 @@ long      message_start_time_us;
 // cars
 const int     MAX_CAR = 300; 
 class car   * car[MAX_CAR];
-int           max_car = 0;
-int           dashboard_and_view_idx = 0;
+int           dashboard_and_view_idx = -1;
 int           launch_pending = 0;
 bool launch_new_car(display &d, world &w);
+int get_next_dashboard_and_view_idx(int id);
 
 // update car controls threads
 const int          MAX_CAR_UPDATE_CONTROLS_THREAD = 10;
@@ -173,14 +172,20 @@ int main(int argc, char **argv)
 
         // update all car mechanics: position, direction, speed
         if (mode == RUN) {            
-            for (int i = 0; i < max_car; i++) {
+            for (int i = 0; i < MAX_CAR; i++) {
+                if (car[i] == NULL) {
+                    continue;
+                }
                 car[i]->update_mechanics(CYCLE_TIME_US);
             }
         }
 
         // update car positions in the world 
         w.place_object_init();
-        for (int i = 0; i < max_car; i++) {
+        for (int i = 0; i < MAX_CAR; i++) {
+            if (car[i] == NULL) {
+                continue;
+            }
             car[i]->place_car_in_world();
         }
 
@@ -190,7 +195,7 @@ int main(int argc, char **argv)
             car_update_controls_idx = 0;
             car_update_controls_cv1.notify_all();
             std::unique_lock<std::mutex> car_update_controls_cv2_lck(car_update_controls_cv2_mtx);
-            while (car_update_controls_completed != max_car) {
+            while (car_update_controls_completed != MAX_CAR) {
                 car_update_controls_cv2.wait(car_update_controls_cv2_lck);
             }
             car_update_controls_cv2_lck.unlock(); // not needed, unique_lock automatically unlocks
@@ -212,7 +217,7 @@ int main(int argc, char **argv)
 
         // draw car front view and dashboard, and
         // draw pointer to this car in the world view
-        if (dashboard_and_view_idx < max_car) {
+        if (dashboard_and_view_idx != -1) {
             car[dashboard_and_view_idx]->draw_view(PANE_CAR_VIEW_ID);
             car[dashboard_and_view_idx]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
 
@@ -236,21 +241,28 @@ int main(int argc, char **argv)
         int eid_quit_win  = d.event_register(display::ET_QUIT);
         int eid_pan       = d.event_register(display::ET_MOUSE_MOTION, 0);
         int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run_stop  = d.text_draw(mode == STOP ? "RUN" : "STOP",  0, 0, PANE_PGM_CTL_ID, true, 'r');      
+        int eid_run_stop  = d.text_draw(mode == STOP ? "RUN" : "STOP",  0, 0, PANE_PGM_CTL_ID, true, mode == STOP ? 'r' : 's');
         int eid_launch    = d.text_draw("LAUNCH", 0, 7, PANE_PGM_CTL_ID, true, 'l');      
+        int eid_delete    = d.text_draw("DELETE", 0, 16, PANE_PGM_CTL_ID, true, 'd');      
         int eid_wp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
         int eid_vp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_VIEW_ID);
         int eid_dp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_DASHBOARD_ID);
 
         // display number cars: active, failed, and pending
         int failed_count = 0;
-        for (int i = 0; i < max_car; i++) {
-            if (car[i]->get_failed()) {
-                failed_count++;
+        int active_count = 0;
+        for (int i = 0; i < MAX_CAR; i++) {
+            if (car[i] == NULL) {
+                continue;
             }
+            if (!car[i]->get_failed()) {
+                active_count++;
+            } else {
+                failed_count++;
+            } 
         }
         ostringstream s;
-        s << "ACTV " << max_car << "  FAIL " << failed_count << " PEND " << launch_pending;
+        s << "ACTV " << active_count << "  FAIL " << failed_count << " PEND " << launch_pending;
         d.text_draw(s.str(), 1, 0, PANE_PGM_CTL_ID);
 
         // finish, updates the display
@@ -292,13 +304,27 @@ int main(int argc, char **argv)
             if (event.eid == eid_launch) {
                 launch_pending++;
                 d.event_play_sound();
+                break;
+            }
+            if (event.eid == eid_delete) {
+                if (dashboard_and_view_idx != -1) {
+                    int id = car[dashboard_and_view_idx]->get_id();
+                    delete car[dashboard_and_view_idx];
+                    car[dashboard_and_view_idx] = NULL;
+                    dashboard_and_view_idx = get_next_dashboard_and_view_idx(id);
+                }
+                d.event_play_sound();
+                break;
             }
             if (event.eid == eid_wp_click) {
                 int x,y;
                 w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH,
                                            (double)event.val2/PANE_WORLD_HEIGHT,
                                            x, y);
-                for (int i = 0; i < max_car; i++) {
+                for (int i = 0; i < MAX_CAR; i++) {
+                    if (car[i] == NULL) {
+                        continue;
+                    }
                     if (x >= car[i]->get_x() - 7 &&
                         x <= car[i]->get_x() + 7 &&
                         y >= car[i]->get_y() - 7 &&
@@ -312,10 +338,11 @@ int main(int argc, char **argv)
                 break;
             }
             if (event.eid == eid_vp_click || event.eid == eid_dp_click) {
-                if (max_car > 0) {
-                    dashboard_and_view_idx = (dashboard_and_view_idx + 1) % max_car;
-                    d.event_play_sound();
-                }
+                int id = (dashboard_and_view_idx != -1
+                          ? car[dashboard_and_view_idx]->get_id()
+                          : 0);
+                dashboard_and_view_idx = get_next_dashboard_and_view_idx(id);
+                d.event_play_sound();
                 break;
             }
         } while(0);
@@ -368,19 +395,77 @@ bool launch_new_car(display &d, world &w)
         }
     }
 
+    // find a free slot in car array
+    int idx;
+    for (idx = 0; idx < MAX_CAR; idx++) {
+        if (car[idx] == NULL) {
+            break;
+        }
+    }
+    if (idx == MAX_CAR) {
+        return false;
+    }
+
     // choose the car's max speed at random, in range 30 to 50 mph
     static std::default_random_engine generator(microsec_timer()); 
     static std::uniform_int_distribution<int> random_uniform_30_to_50(30,50);
     int max_speed = random_uniform_30_to_50(generator);
 
+    // choose the car's id
+    static int id;
+    id++;
+
     // create the car
-    int id = max_car;
-    car[max_car++] = new class autonomous_car(d, w, id, xo, yo, dir, speed, max_speed);
+    car[idx] = new class autonomous_car(d, w, id, xo, yo, dir, speed, max_speed);
+
+    // if dashboard display is not active then display this car
+    if (dashboard_and_view_idx == -1) {
+        dashboard_and_view_idx = idx;
+    }
 
     // return success
     return true;
 }
 
+// -----------------  GET NEXT DASHBOARD AND VIEW IDX  ---------------------------------------------
+
+int get_next_dashboard_and_view_idx(int id_arg)
+{
+    int min_id_idx = -1;
+    int min_id_greater_than_id_arg_idx = -1;
+    int min_id = 99999999;
+    int min_id_greater_than_id_arg = 99999999;
+
+    // loop over all possible cars
+    for (int idx = 0; idx < MAX_CAR; idx++) {
+        // if car doesn't exist then continue
+        if (car[idx] == NULL) {
+            continue;
+        }
+
+        // get car's id
+        int id = car[idx]->get_id();
+
+        // save the minimum car id
+        if (id < min_id) {
+            min_id = id;
+            min_id_idx = idx;
+        }
+
+        // save the minimum car id that is greater than id_arg
+        if (id > id_arg && id < min_id_greater_than_id_arg) {
+            min_id_greater_than_id_arg = id;
+            min_id_greater_than_id_arg_idx = idx;
+        }
+    }
+
+    // return the minimum car id that is greater than id arg, if that exists, 
+    // else return the minimum car id; if there are no cars then -1 is returned
+    return (min_id_greater_than_id_arg_idx != -1 
+            ? min_id_greater_than_id_arg_idx
+            : min_id_idx);
+}
+        
 // -----------------  CAR UPDATE CONTROLS THREAD----------------------------------------------------
 
 void car_update_controls_thread(int id) 
@@ -390,7 +475,7 @@ void car_update_controls_thread(int id)
     while (true) {
         // wait for request
         std::unique_lock<std::mutex> car_update_controls_cv1_lck(car_update_controls_cv1_mtx);
-        while (car_update_controls_idx >= max_car && !car_update_controls_terminate) {
+        while (car_update_controls_idx >= MAX_CAR && !car_update_controls_terminate) {
             car_update_controls_cv1.wait(car_update_controls_cv1_lck);
         }
         car_update_controls_cv1_lck.unlock();
@@ -401,13 +486,15 @@ void car_update_controls_thread(int id)
         }
 
         // update car controls
-        while ((idx = car_update_controls_idx.fetch_add(1)) < max_car) {
-            car[idx]->update_controls(CYCLE_TIME_US);
+        while ((idx = car_update_controls_idx.fetch_add(1)) < MAX_CAR) {
+            if (car[idx] != NULL) {
+                car[idx]->update_controls(CYCLE_TIME_US);
+            }
             car_update_controls_completed++;
         }
 
         // if this thread finished up the work then notify main that we're done
-        if (car_update_controls_completed == max_car) {
+        if (car_update_controls_completed == MAX_CAR) {
             car_update_controls_cv2.notify_one();
         }
     }

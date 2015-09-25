@@ -389,7 +389,6 @@ int main(int argc, char **argv)
                     break;
                 }
                 if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {
-                    INFO("GOT " << event.eid - eid_color_select[0] << endl);
                     edit_pixels_color_selection = 
                             edit_pixels_color_select_tbl[event.eid - eid_color_select[0]].color;
                     d.event_play_sound();

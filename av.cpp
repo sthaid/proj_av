@@ -215,20 +215,29 @@ int main(int argc, char **argv)
         // draw world 
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
 
-        // draw car front view and dashboard, and
-        // draw pointer to this car in the world view
+        // draw car front view and dashboard
         if (dashboard_and_view_idx != -1) {
             car[dashboard_and_view_idx]->draw_view(PANE_CAR_VIEW_ID);
             car[dashboard_and_view_idx]->draw_dashboard(PANE_CAR_DASHBOARD_ID);
+        }
+
+        // draw pointers to all cars 
+        for (int i = 0; i < MAX_CAR; i++) {
+            if (car[i] == NULL) {
+                continue;
+            }
 
             double pixel_x, pixel_y;
             int ptr_size = 3 * zoom;
             if (ptr_size < 7) {
                 ptr_size = 7;
             }
-            w.cvt_coord_world_to_pixel(car[dashboard_and_view_idx]->get_x(), car[dashboard_and_view_idx]->get_y(),
-                                       pixel_x, pixel_y);
-            d.draw_set_color(display::PURPLE);
+            enum display::color color;
+            color = (i == dashboard_and_view_idx ? display::WHITE :
+                     car[i]->get_failed()        ? display::PINK :
+                                                   display::PURPLE);
+            w.cvt_coord_world_to_pixel(car[i]->get_x(), car[i]->get_y(), pixel_x, pixel_y);
+            d.draw_set_color(color);
             d.draw_pointer(pixel_x*PANE_WORLD_WIDTH, pixel_y*PANE_WORLD_HEIGHT, ptr_size, PANE_WORLD_ID);
         }
 

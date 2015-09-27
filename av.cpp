@@ -191,10 +191,10 @@ int main(int argc, char **argv)
 
         // update all car controls: steering and speed
         if (mode == RUN) {            
+            std::unique_lock<std::mutex> car_update_controls_cv2_lck(car_update_controls_cv2_mtx);
             car_update_controls_completed = 0;
             car_update_controls_idx = 0;
             car_update_controls_cv1.notify_all();
-            std::unique_lock<std::mutex> car_update_controls_cv2_lck(car_update_controls_cv2_mtx);
             while (car_update_controls_completed != MAX_CAR) {
                 car_update_controls_cv2.wait(car_update_controls_cv2_lck);
             }
@@ -239,14 +239,18 @@ int main(int argc, char **argv)
 
         // draw and register events
         int eid_quit_win  = d.event_register(display::ET_QUIT);
-        int eid_pan       = d.event_register(display::ET_MOUSE_MOTION, 0);
+        int eid_pan       = d.event_register(display::ET_MOUSE_LEFT_MOTION, 0);
         int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
-        int eid_run_stop  = d.text_draw(mode == STOP ? "RUN" : "STOP",  0, 0, PANE_PGM_CTL_ID, true, mode == STOP ? 'r' : 's');
-        int eid_launch    = d.text_draw("LAUNCH", 0, 7, PANE_PGM_CTL_ID, true, 'l');      
-        int eid_delete    = d.text_draw("DELETE", 0, 16, PANE_PGM_CTL_ID, true, 'd');      
+        int eid_run       = d.text_draw("RUN",    0, 0,  PANE_PGM_CTL_ID, true, 'r');
+        int eid_stop      = d.text_draw("STOP",   0, 5,  PANE_PGM_CTL_ID, true, 's');
+        int eid_launch    = d.text_draw("LAUNCH", 0, 11, PANE_PGM_CTL_ID, true, 'l');      
+        int eid_delete    = d.text_draw("DEL",    0, 19, PANE_PGM_CTL_ID, true, 'd');      
         int eid_wp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
         int eid_vp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_VIEW_ID);
         int eid_dp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_DASHBOARD_ID);
+
+        // display mode
+        d.text_draw(mode == RUN ? "RUNNING" : "STOPPED", 1, 0, PANE_PGM_CTL_ID);
 
         // display number cars: active, failed, and pending
         int failed_count = 0;
@@ -263,7 +267,7 @@ int main(int argc, char **argv)
         }
         ostringstream s;
         s << "ACTV " << active_count << " FAIL " << failed_count << " PEND " << launch_pending;
-        d.text_draw(s.str(), 1, 0, PANE_PGM_CTL_ID);
+        d.text_draw(s.str(), 2, 0, PANE_PGM_CTL_ID);
 
         // finish, updates the display
         d.finish();
@@ -283,21 +287,26 @@ int main(int argc, char **argv)
                 break;
             }
             if (event.eid == eid_pan) {
-                center_x -= (double)event.val1 * 8 / zoom;
-                center_y -= (double)event.val2 * 8 / zoom;
+                center_x -= (double)event.motion.delta_x * 8 / zoom;
+                center_y -= (double)event.motion.delta_y * 8 / zoom;
                 break;
             } 
             if (event.eid == eid_zoom) {
-                if (event.val2 < 0 && zoom > MIN_ZOOM) {
+                if (event.wheel.delta_y < 0 && zoom > MIN_ZOOM) {
                     zoom /= ZOOM_FACTOR;
                 }
-                if (event.val2 > 0 && zoom < MAX_ZOOM) {
+                if (event.wheel.delta_y > 0 && zoom < MAX_ZOOM) {
                     zoom *= ZOOM_FACTOR;
                 }
                 break;
             }
-            if (event.eid == eid_run_stop) {
-                mode = (mode == RUN ? STOP : RUN);
+            if (event.eid == eid_run) {
+                mode = RUN;
+                d.event_play_sound();
+                break;
+            }
+            if (event.eid == eid_stop) {
+                mode = STOP;
                 d.event_play_sound();
                 break;
             }
@@ -318,8 +327,8 @@ int main(int argc, char **argv)
             }
             if (event.eid == eid_wp_click) {
                 int x,y;
-                w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH,
-                                           (double)event.val2/PANE_WORLD_HEIGHT,
+                w.cvt_coord_pixel_to_world((double)event.click.x/PANE_WORLD_WIDTH,
+                                           (double)event.click.y/PANE_WORLD_HEIGHT,
                                            x, y);
                 for (int i = 0; i < MAX_CAR; i++) {
                     if (car[i] == NULL) {
@@ -495,7 +504,9 @@ void car_update_controls_thread(int id)
 
         // if this thread finished up the work then notify main that we're done
         if (car_update_controls_completed == MAX_CAR) {
+            car_update_controls_cv2_mtx.lock();
             car_update_controls_cv2.notify_one();
+            car_update_controls_cv2_mtx.unlock();
         }
     }
 }

@@ -11,6 +11,8 @@
 using std::ostringstream;
 using std::setprecision;
 using std::fixed;
+using std::setw;
+using std::setfill;
 
 // car pixels
 const int CAR_PIXELS_HEIGHT = 17;
@@ -114,6 +116,8 @@ car::car(display &display, world &world, int id_arg, double x_arg, double y_arg,
     steer_ctl          = 0;
     steer_ctl_smoothed = 0;
     failed             = false;
+    failed_str         = "";
+    run_time_us        = 0;
 
     sanitize_direction(dir);
 
@@ -188,6 +192,9 @@ void car::update_mechanics(double microsecs)
     if (get_failed()) {
         return;
     }
+
+    // update run time
+    run_time_us += microsecs;
 
     // update car position based on current direction and speed
     distance = speed * microsecs * (5280./3600./1e6);
@@ -269,6 +276,17 @@ void car::draw_dashboard(int pid)
         s << "OK";
     }
     d.text_draw(s.str(), 2.1, 1.5, pid, false, 0, 1);
+
+    // run time
+    int hours, minutes, seconds;
+    seconds = run_time_us / 1000000;
+    hours = seconds / 3600;
+    seconds -= hours * 3600;
+    minutes = seconds / 60;
+    seconds -= 60 * minutes;
+    s.str("");
+    s << setfill('0') << setw(2) << hours << ":" << setw(2) << minutes << ":" << setw(2) << seconds;
+    d.text_draw(s.str(), 2.1, 17, pid, false, 0, 1);
 
     // steering control
     steer_ctl_smoothed = (steer_ctl + 9 * steer_ctl_smoothed) / 10;

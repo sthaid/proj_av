@@ -695,6 +695,8 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
 {
     assert(pid >= 0 && pid < max_pane);
     assert(max_eid < MAX_EID);
+    assert((key_alias == 0) ||
+           (key_alias != 0 && (et == ET_MOUSE_LEFT_CLICK || et == ET_MOUSE_RIGHT_CLICK)));
 
     if (x < 0) {
         x = 0;
@@ -783,8 +785,8 @@ struct display::event display::event_poll()
                         EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
                     {
                         event.eid = eid;
-                        event.val1 = sdl_event.button.x - eid_tbl[eid].x;
-                        event.val2 = sdl_event.button.y - eid_tbl[eid].y;
+                        event.click.x = sdl_event.button.x - eid_tbl[eid].x;
+                        event.click.y = sdl_event.button.y - eid_tbl[eid].y;
                         break;
                     }
                 }
@@ -792,14 +794,21 @@ struct display::event display::event_poll()
                     break;
                 }
 
-                // check for registered mouse motion event
+                // check for registered left mouse motion event
                 for (int eid = 0; eid < max_eid; eid++) {
-                    if (eid_tbl[eid].et == ET_MOUSE_MOTION &&
+                    if (eid_tbl[eid].et == ET_MOUSE_LEFT_MOTION &&
                         EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
                     {
                         mouse_motion_eid = eid;
                         mouse_motion_x = sdl_event.button.x;
                         mouse_motion_y = sdl_event.button.y;
+
+                        event.eid = eid;
+                        event.motion.state = MOTION_START;
+                        event.motion.x = sdl_event.button.x - eid_tbl[eid].x;
+                        event.motion.y = sdl_event.button.y - eid_tbl[eid].y;
+                        event.motion.delta_x = 0;
+                        event.motion.delta_y = 0;
                         break;
                     }
                 }
@@ -816,13 +825,32 @@ struct display::event display::event_poll()
                         EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
                     {
                         event.eid = eid;
-                        event.val1 = sdl_event.button.x - eid_tbl[eid].x;
-                        event.val2 = sdl_event.button.y - eid_tbl[eid].y;
+                        event.click.x = sdl_event.button.x - eid_tbl[eid].x;
+                        event.click.y = sdl_event.button.y - eid_tbl[eid].y;
                         break;
                     }
                 }
                 if (event.eid != EID_NONE) {
                     break;
+                }
+
+                // check for registered right mouse motion event
+                for (int eid = 0; eid < max_eid; eid++) {
+                    if (eid_tbl[eid].et == ET_MOUSE_RIGHT_MOTION &&
+                        EID_TBL_POS_MATCH(sdl_event.button.x, sdl_event.button.y, eid)) 
+                    {
+                        mouse_motion_eid = eid;
+                        mouse_motion_x = sdl_event.button.x;
+                        mouse_motion_y = sdl_event.button.y;
+
+                        event.eid = eid;
+                        event.motion.state = MOTION_START;
+                        event.motion.x = sdl_event.button.x - eid_tbl[eid].x;
+                        event.motion.y = sdl_event.button.y - eid_tbl[eid].y;
+                        event.motion.delta_x = 0;
+                        event.motion.delta_y = 0;
+                        break;
+                    }
                 }
 
                 // done with mouse click processing
@@ -843,13 +871,18 @@ struct display::event display::event_poll()
                   " y=" << sdl_event.button.y << 
                   endl);
 
-            // if left button is up then clear mouse motion
-            if (sdl_event.button.button == SDL_BUTTON_LEFT) {
-                mouse_motion_eid = EID_NONE;
-                break;
+            // if mouse motion is active then return motion-complete event
+            if (mouse_motion_eid != EID_NONE) {
+                event.eid = mouse_motion_eid;
+                event.motion.state = MOTION_COMPLETE;
+                event.motion.x = sdl_event.button.x - eid_tbl[mouse_motion_eid].x;
+                event.motion.y = sdl_event.button.y - eid_tbl[mouse_motion_eid].y;
+                event.motion.delta_x = 0;
+                event.motion.delta_y = 0;
             }
 
-            // no processing for other mouse buttons up
+            // clear mouse motion
+            mouse_motion_eid = EID_NONE;
             break; }
 
         case SDL_MOUSEMOTION: {
@@ -860,11 +893,14 @@ struct display::event display::event_poll()
 
             // get all additional pending mouse motion events, and sum the motion
             event.eid = mouse_motion_eid;
-            event.val1 = 0;  // delta_x
-            event.val2 = 0;  // delta_y
+            event.motion.state = MOTION_CONT;
+            event.motion.delta_x = 0;    
+            event.motion.delta_y = 0;    
             do {
-                event.val1 += sdl_event.motion.x - mouse_motion_x;
-                event.val2 += sdl_event.motion.y - mouse_motion_y;
+                event.motion.delta_x += sdl_event.motion.x - mouse_motion_x;
+                event.motion.delta_y += sdl_event.motion.y - mouse_motion_y;
+                event.motion.x = sdl_event.motion.x - eid_tbl[mouse_motion_eid].x;
+                event.motion.y = sdl_event.motion.y - eid_tbl[mouse_motion_eid].y;
                 mouse_motion_x = sdl_event.motion.x;
                 mouse_motion_y = sdl_event.motion.y;
             } while (SDL_PeepEvents(&sdl_event, 1, SDL_GETEVENT, SDL_MOUSEMOTION, SDL_MOUSEMOTION) == 1);
@@ -887,15 +923,15 @@ struct display::event display::event_poll()
 
             // set return event
             event.eid = eid;
-            event.val1 = sdl_event.wheel.x;  // delta_x
-            event.val2 = sdl_event.wheel.y;  // delta_y
+            event.wheel.delta_x = sdl_event.wheel.x;
+            event.wheel.delta_y = sdl_event.wheel.y;
             break; }
 
         case SDL_KEYDOWN: {
             int  key   = sdl_event.key.keysym.sym;
             bool shift = (sdl_event.key.keysym.mod & KMOD_SHIFT) != 0;
             bool ctrl  = (sdl_event.key.keysym.mod & KMOD_CTRL) != 0;
-            int  val1  = 0;
+            int  event_key_code  = 0;
             int  eid;
 
             // process control chars
@@ -913,60 +949,63 @@ struct display::event display::event_poll()
             //   a-z, A-Z, 0-9, space, home, end, pageup, pagedown
             if (key >= 0 && key <= 255) {
                 if (islower(key)) {
-                    val1 = (!shift ? key : toupper(key));
+                    event_key_code = (!shift ? key : toupper(key));
                 } else if (isdigit(key) && !shift) {
-                    val1 = key;
+                    event_key_code = key;
                 } else if (isblank(key)) {
-                    val1 = key;
+                    event_key_code = key;
                 } else {
                     break; // not an event
                 }
             } else if (key == SDLK_HOME) {
-                val1 = KEY_HOME;
+                event_key_code = KEY_HOME;
             } else if (key == SDLK_END) {
-                val1 = KEY_END;
+                event_key_code = KEY_END;
             } else if (key == SDLK_PAGEUP) {
-                val1= KEY_PGUP;
+                event_key_code= KEY_PGUP;
             } else if (key == SDLK_PAGEDOWN) {
-                val1 = KEY_PGDN;
+                event_key_code = KEY_PGDN;
             } else if (key == SDLK_UP) {
-                val1 = KEY_UP;
+                event_key_code = KEY_UP;
             } else if (key == SDLK_DOWN) {
-                val1 = KEY_DOWN;
+                event_key_code = KEY_DOWN;
             } else if (key == SDLK_RIGHT) {
-                val1 = KEY_RIGHT;
+                event_key_code = KEY_RIGHT;
             } else if (key == SDLK_LEFT) {
-                val1 = KEY_LEFT;
+                event_key_code = KEY_LEFT;
             } else {
                 break; // not an event
             }
 
-            // search for eid with matching key_alias
+            // search for eid with matching key_alias, 
+            // if found then return that mouse click event
             for (eid = 0; eid < max_eid; eid++) {
-                if (eid_tbl[eid].key_alias == val1) {
+                if (eid_tbl[eid].key_alias == event_key_code) {
                     break;
                 }
             }
+            if (eid < max_eid) {
+                event.eid = eid;
+                event.click.x = 0;
+                event.click.y = 0;
+                break;
+            } 
 
-            // if eid with matching key_alias is not found then 
-            // search for registered ET_KEYBOARD 
-            if (eid == max_eid) {
-                for (eid = 0; eid < max_eid; eid++) {
-                    if (eid_tbl[eid].et == ET_KEYBOARD) {
-                        break;
-                    }
+            // eid with matching key_alias was not found, 
+            // so search for registered ET_KEYBOARD event and if found
+            // then return that event
+            for (eid = 0; eid < max_eid; eid++) {
+                if (eid_tbl[eid].et == ET_KEYBOARD) {
+                    break;
                 }
             }
-
-            // break out if no event found
-            if (eid == max_eid) {
+            if (eid < max_eid) {
+                event.eid = eid;
+                event.key.code = event_key_code;
                 break;
             }
 
-            // fill in the event
-            event.eid = eid;
-            event.val1 = val1;
-            event.val2 = 0;
+            // no event
             break; }
 
        case SDL_WINDOWEVENT: {
@@ -1006,8 +1045,10 @@ struct display::event display::event_poll()
 
             // fill in the event
             event.eid = eid;
-            event.val1 = 0;  // not used
-            event.val2 = 0;  // not used
+            if (et == ET_WIN_SIZE_CHANGE) {
+                event.win_size.width = win_width;
+                event.win_size.height = win_height;
+            }
             break; }
 
         case SDL_QUIT: {
@@ -1026,8 +1067,6 @@ struct display::event display::event_poll()
 
             // fill in the event
             event.eid = eid;
-            event.val1 = 0;  // not used
-            event.val2 = 0;  // not used
             break; }
 
         default: {

@@ -57,6 +57,7 @@ private:
     double steer_ctl_smoothed;
     bool   failed;
     string failed_str;
+    long   run_time_us;
 };
 
 #endif

@@ -71,6 +71,7 @@ edit_pixels_color_select_t edit_pixels_color_select_tbl[MAX_EDIT_PIXELS_COLOR_SE
       { 450,  50, 75, 75, display::RED    },
           };
 display::color edit_pixels_color_selection = display::GREEN;
+void edit_pixels(class world &w, bool start, int x, int y);
 
 // display message utility
 inline void display_message(string msg)
@@ -144,7 +145,7 @@ int main(int argc, char **argv)
         // draw world 
         w.place_object_init();
         if (mode == CREATE_ROADS) {
-            car car(d, w, 0, create_road_x, create_road_y, create_road_dir, 0, 0);
+            car car(d, w, 0, create_road_x, create_road_y, create_road_dir, 0, 50);
             car.place_car_in_world();
         }
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
@@ -214,14 +215,14 @@ int main(int argc, char **argv)
         for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
             eid_color_select[i] = -1;
         }
-        int eid_ep_click=-1;
+        int eid_ep_motion = -1;
 
         eid_write    = d.text_draw("WRITE",        13,  0, PANE_CTRL_ID, true);      
         eid_quit     = d.text_draw("QUIT",         13,  8, PANE_CTRL_ID, true);     
         eid_reset    = d.text_draw("RESET",        15,  0, PANE_CTRL_ID, true);     
         eid_clear    = d.text_draw("CLEAR",        15,  8, PANE_CTRL_ID, true);      
         eid_quit_win = d.event_register(display::ET_QUIT);
-        eid_pan      = d.event_register(display::ET_MOUSE_MOTION, PANE_WORLD_ID);
+        eid_pan      = d.event_register(display::ET_MOUSE_LEFT_MOTION, PANE_WORLD_ID);
         eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, PANE_WORLD_ID);
         switch (mode) {
         case MAIN:
@@ -247,7 +248,7 @@ int main(int argc, char **argv)
             break;
         case EDIT_PIXELS:
             eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
-            eid_ep_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
+            eid_ep_motion = d.event_register(display::ET_MOUSE_RIGHT_MOTION, PANE_WORLD_ID);
             for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
                 edit_pixels_color_select_t &p = edit_pixels_color_select_tbl[i];
                 eid_color_select[i] = d.event_register(display::ET_MOUSE_LEFT_CLICK, PANE_CTRL_ID, p.x, p.y, p.w, p.h);
@@ -294,15 +295,15 @@ int main(int argc, char **argv)
                 break;
             }
             if (event.eid == eid_pan) {
-                center_x -= (double)event.val1 * 8 / zoom;
-                center_y -= (double)event.val2 * 8 / zoom;
+                center_x -= (double)event.motion.delta_x * 8 / zoom;
+                center_y -= (double)event.motion.delta_y * 8 / zoom;
                 break;
             } 
             if (event.eid == eid_zoom) {
-                if (event.val2 < 0 && zoom > MIN_ZOOM) {
+                if (event.wheel.delta_y < 0 && zoom > MIN_ZOOM) {
                     zoom /= ZOOM_FACTOR;
                 }
-                if (event.val2 > 0 && zoom < MAX_ZOOM) {
+                if (event.wheel.delta_y > 0 && zoom < MAX_ZOOM) {
                     zoom *= ZOOM_FACTOR;
                 }
                 break;
@@ -348,8 +349,8 @@ int main(int argc, char **argv)
                 }
                 if (event.eid == eid_cr_click) {
                     int x,y;
-                    w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH, 
-                                               (double)event.val2/PANE_WORLD_HEIGHT, 
+                    w.cvt_coord_pixel_to_world((double)event.click.x/PANE_WORLD_WIDTH, 
+                                               (double)event.click.y/PANE_WORLD_HEIGHT, 
                                                x, y);
                     create_road_x = x;
                     create_road_y = y;
@@ -377,15 +378,16 @@ int main(int argc, char **argv)
                 if (event.eid == eid_back) {
                     create_roads_run = false;
                     mode = MAIN;
+                    d.event_play_sound();
                     break;
                 }
-                if (event.eid == eid_ep_click) {
+                if (event.eid == eid_ep_motion) {
                     int x,y;
-                    w.cvt_coord_pixel_to_world((double)event.val1/PANE_WORLD_WIDTH, 
-                                               (double)event.val2/PANE_WORLD_HEIGHT, 
+                    bool start = (event.motion.state == display::MOTION_START);
+                    w.cvt_coord_pixel_to_world((double)event.motion.x/PANE_WORLD_WIDTH, 
+                                               (double)event.motion.y/PANE_WORLD_HEIGHT, 
                                                x, y);
-                    w.set_static_pixel(x, y, edit_pixels_color_selection);
-                    d.event_play_sound();
+                    edit_pixels(w, start, x, y);
                     break;
                 }
                 if (event.eid >= eid_color_select[0] && event.eid <= eid_color_select[MAX_EDIT_PIXELS_COLOR_SELECT-1]) {
@@ -429,3 +431,74 @@ void create_road_slice(class world &w, double x, double y, double dir)
     }
     w.set_static_pixel(x,y,display::YELLOW);
 }
+
+// -----------------  EDIT PIXELS  -----------------------------------------------------------------
+
+void edit_pixels(class world &w, bool start, int x_current, int y_current)
+{
+    int x_rect_low, x_rect_high, y_rect_low, y_rect_high;
+
+    static int x_rect_low_save, x_rect_high_save, y_rect_low_save, y_rect_high_save;
+    static int x_start, y_start;
+
+    // if this event is start of motion then
+    //   save the start pixel coords;
+    //   init saved rect
+    //   set this pixel
+    // endif
+    if (start) {
+        x_start = x_current;
+        y_start = y_current;
+
+        x_rect_low_save = x_start;
+        x_rect_high_save  = x_start;
+        y_rect_low_save = y_start;
+        y_rect_high_save  = y_start;
+
+        w.set_static_pixel(x_start, y_start, edit_pixels_color_selection);
+    }
+
+    // determine rectangle coordinates using the start and current pixel coords
+    x_rect_low = (x_start <  x_current ? x_start : x_current);
+    x_rect_high  = (x_start >= x_current ? x_start : x_current);
+    y_rect_low = (y_start <  y_current ? y_start : y_current);
+    y_rect_high  = (y_start >= y_current ? y_start : y_current);
+
+    // set additional pixels for where the rectangle has grown since last time
+    if (x_rect_high > x_rect_high_save) {
+        for (int x = x_rect_high_save+1; x <= x_rect_high; x++) {
+            for (int y = y_rect_low; y <= y_rect_high; y++) {
+                w.set_static_pixel(x, y, edit_pixels_color_selection);
+            }
+        }
+    }
+    if (x_rect_low < x_rect_low_save) {
+        for (int x = x_rect_low_save-1; x >= x_rect_low; x--) {
+            for (int y = y_rect_low; y <= y_rect_high; y++) {
+                w.set_static_pixel(x, y, edit_pixels_color_selection);
+            }
+        }
+    }
+    if (y_rect_high > y_rect_high_save) {
+        for (int y = y_rect_high_save+1; y <= y_rect_high; y++) {
+            for (int x = x_rect_low; x <= x_rect_high; x++) {
+                w.set_static_pixel(x, y, edit_pixels_color_selection);
+            }
+        }
+    }
+    if (y_rect_low < y_rect_low_save) {
+        for (int y = y_rect_low_save-1; y >= y_rect_low; y--) {
+            for (int x = x_rect_low; x <= x_rect_high; x++) {
+                w.set_static_pixel(x, y, edit_pixels_color_selection);
+            }
+        }
+    }
+
+    // XXX restore pixels if the rectangle is smaller
+
+    // save rect 
+    x_rect_low_save = x_rect_low;
+    x_rect_high_save  = x_rect_high;
+    y_rect_low_save = y_rect_low;
+    y_rect_high_save  = y_rect_high;
+}    

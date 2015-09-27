@@ -1,3 +1,4 @@
+// XXX display turn choices and which is taken
 #include <cassert>
 #include <iomanip>
 #include <sstream>
@@ -139,6 +140,7 @@ void autonomous_car::update_controls(double microsecs)
     scan_road(view);
     if (distance_road_is_clear == 0) {
         set_failed("COLLISION");
+// XXX dump the data
     }
     if (get_failed()) {
         return;

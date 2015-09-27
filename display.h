@@ -21,13 +21,36 @@ public:
                  TRANSPARENT };
     enum event_type { ET_NONE=-1, ET_QUIT, 
                       ET_WIN_SIZE_CHANGE, ET_WIN_MINIMIZED, ET_WIN_RESTORED, 
-                      ET_MOUSE_LEFT_CLICK, ET_MOUSE_RIGHT_CLICK, ET_MOUSE_MOTION, ET_MOUSE_WHEEL, 
+                      ET_MOUSE_LEFT_CLICK, ET_MOUSE_RIGHT_CLICK, ET_MOUSE_LEFT_MOTION, ET_MOUSE_RIGHT_MOTION, ET_MOUSE_WHEEL, 
                       ET_KEYBOARD };
+    enum motion_state {MOTION_START, MOTION_CONT, MOTION_COMPLETE};
 
     struct event {
         int eid;
-        int val1;  // delta_x, or key
-        int val2;  // deltay_y
+        union {
+            struct {
+                int x;
+                int y;
+            } click;
+            struct {
+                enum motion_state state;
+                int x;
+                int y;
+                int delta_x;
+                int delta_y;
+            } motion;
+            struct {
+                int delta_x;
+                int delta_y;
+            } wheel;
+            struct {
+                int code;
+            } key;
+            struct {
+                int width;
+                int height;
+            } win_size;
+        };
     };
 
     struct texture;

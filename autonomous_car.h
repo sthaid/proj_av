@@ -41,6 +41,9 @@ private:
     int distance_road_is_clear;
     double x_line[MAX_VIEW_HEIGHT];
     fullgap_t fullgap;
+    bool continuing_from_stop_left_is_possible;
+    bool continuing_from_stop_straight_is_possible;
+    bool continuing_from_stop_right_is_possible;
 
     void scan_road(view_t & view);
     double scan_across_for_center_line(view_t &view, int y, double x);

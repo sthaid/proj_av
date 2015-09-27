@@ -1,4 +1,3 @@
-// XXX display turn choices and which is taken
 #include <cassert>
 #include <iomanip>
 #include <sstream>
@@ -43,6 +42,9 @@ autonomous_car::autonomous_car(display &display, world &world, int id, double x,
         xl = MAX_VIEW_WIDTH/2;
     }
     fullgap.valid = false;
+    continuing_from_stop_left_is_possible = false;
+    continuing_from_stop_straight_is_possible = false;
+    continuing_from_stop_right_is_possible = false;
 }
 
 autonomous_car::~autonomous_car()
@@ -97,6 +99,16 @@ void autonomous_car::draw_dashboard(int pid)
 
     // autonomous dash line 1: state
     d.text_draw(state_string(state), base_row+0, 1, pid, false, 0, 1);
+
+    // autonomous dash line 1: continuing from stop possible directions
+    if (state == STATE_CONTINUING_FROM_STOP) {
+        d.text_draw(continuing_from_stop_left_is_possible ? "L" : "-",
+                    base_row+0, 25, pid, false, 0, 1);
+        d.text_draw(continuing_from_stop_straight_is_possible ? "S" : "-",
+                    base_row+0, 26, pid, false, 0, 1);
+        d.text_draw(continuing_from_stop_right_is_possible ? "R" : "-",
+                    base_row+0, 27, pid, false, 0, 1);
+    }
     
     // autonomous dash line 2: distance road is clear
     s.str("");
@@ -194,7 +206,7 @@ void autonomous_car::update_controls(double microsecs)
         }
         break;
     case STATE_CONTINUING_FROM_STOP:
-        if (time_in_this_state_us > 2000000) {
+        if (time_in_this_state_us > 3000000) {
             state_change(STATE_DRIVING);
         }
         break;
@@ -385,6 +397,9 @@ void autonomous_car::scan_road(view_t &view)
                                                    y_right, x_right);
 
             if (state == STATE_CONTINUING_FROM_STOP) {
+                continuing_from_stop_left_is_possible = (y_left != NO_VALUE);
+                continuing_from_stop_straight_is_possible = (y_straight != NO_VALUE);
+                continuing_from_stop_right_is_possible = (y_right != NO_VALUE);
                 if (y_straight != NO_VALUE || y_left != NO_VALUE || y_right != NO_VALUE) {
                     while (true) {
                         static std::default_random_engine generator(microsec_timer());

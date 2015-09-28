@@ -150,7 +150,7 @@ int main(int argc, char **argv)
     // MAIN LOOP
     //
 
-    enum mode { RUN, STOP };
+    enum mode { RUN, STOP, STEP };
     enum mode  mode = STOP;
     bool       done = false;
 
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         }
 
         // update all car mechanics: position, direction, speed
-        if (mode == RUN) {            
+        if (mode == RUN || mode == STEP) {            
             for (int i = 0; i < MAX_CAR; i++) {
                 if (car[i] == NULL) {
                     continue;
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
         }
 
         // update all car controls: steering and speed
-        if (mode == RUN) {            
+        if (mode == RUN || mode == STEP) {            
             std::unique_lock<std::mutex> car_update_controls_cv2_lck(car_update_controls_cv2_mtx);
             car_update_controls_completed = 0;
             car_update_controls_idx = 0;
@@ -254,12 +254,14 @@ int main(int argc, char **argv)
         int eid_stop      = d.text_draw("STOP",   0, 5,  PANE_PGM_CTL_ID, true, 's');
         int eid_launch    = d.text_draw("LAUNCH", 0, 11, PANE_PGM_CTL_ID, true, 'l');      
         int eid_delete    = d.text_draw("DEL",    0, 19, PANE_PGM_CTL_ID, true, 'd');      
+        int eid_step      = d.text_draw("STEP",   1, 19, PANE_PGM_CTL_ID, true, 'd');      
         int eid_wp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
         int eid_vp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_VIEW_ID);
         int eid_dp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_DASHBOARD_ID);
 
         // display mode
-        d.text_draw(mode == RUN ? "RUNNING" : "STOPPED", 1, 0, PANE_PGM_CTL_ID);
+        d.text_draw(mode == RUN ? "RUNNING" : mode == STEP ? "STEPPING" : "STOPPED", 
+                    1, 0, PANE_PGM_CTL_ID);
 
         // display number cars: active, failed, and pending
         int failed_count = 0;
@@ -280,6 +282,11 @@ int main(int argc, char **argv)
 
         // finish, updates the display
         d.finish();
+
+        // if mode is step then set to stop
+        if (mode == STEP) {
+            mode = STOP;
+        }
 
         //
         // EVENT HADNLING 
@@ -316,6 +323,11 @@ int main(int argc, char **argv)
             }
             if (event.eid == eid_stop) {
                 mode = STOP;
+                d.event_play_sound();
+                break;
+            }
+            if (event.eid == eid_step) {
+                mode = STEP;
                 d.event_play_sound();
                 break;
             }
@@ -401,17 +413,22 @@ int main(int argc, char **argv)
 
 bool launch_new_car(display &d, world &w)
 {
-    const int xo = 2055;
-    const int yo = 2048;
-    const int dir = 0;
+    //XXX const int xo = 2055;
+    //const int yo = 2048;
+    //const int dir = 0;
+    const int xo = 450;
+    const int yo = 2620;
+    const int dir = 335;
     const int speed = 0;
 
+#if 0 // XXX
     // check for clear to launch
     for (int y = yo; y >= yo-12; y--) {
         if (w.get_world_pixel(xo,y) != display::BLACK) {
             return false;
         }
     }
+#endif
 
     // find a free slot in car array
     int idx;

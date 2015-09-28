@@ -152,7 +152,7 @@ void autonomous_car::update_controls(double microsecs)
     scan_road(view);
     if (distance_road_is_clear == 0) {
         set_failed("COLLISION");
-// XXX dump the data
+        // XXX print car data 
     }
     if (get_failed()) {
         return;
@@ -206,7 +206,7 @@ void autonomous_car::update_controls(double microsecs)
         }
         break;
     case STATE_CONTINUING_FROM_STOP:
-        if (time_in_this_state_us > 3000000) {
+        if (time_in_this_state_us > 5000000) {
             state_change(STATE_DRIVING);
         }
         break;
@@ -406,6 +406,7 @@ void autonomous_car::scan_road(view_t &view)
                         static std::uniform_int_distribution<int> rand_0_to_2(0,2);
                         int n = rand_0_to_2(generator);
                         assert(n >= 0 && n <= 2);
+                        // XXX if (y_right != NO_VALUE) n=2; 
                         if (n == 0 && y_straight != NO_VALUE) {
                             fullgap_y_end_view = y_straight;
                             fullgap_x_end_view = x_straight;
@@ -761,8 +762,8 @@ void autonomous_car::set_car_controls()
         DEBUG_ID("steer - direction " << steer_ctl_val << ", low distance_road_is_clear" << endl);
     } else {
         int steer_distance = get_speed() * K_STEER_DISTANCE_FACTOR;
-        if (steer_distance < 5) {
-            steer_distance = 5;
+        if (steer_distance < 10) {
+            steer_distance = 10;
         } 
         if (steer_distance >= distance_road_is_clear) {
             steer_distance = distance_road_is_clear - 1;

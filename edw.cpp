@@ -248,8 +248,8 @@ int main(int argc, char **argv)
         eid_zoom     = d.event_register(display::ET_MOUSE_WHEEL, PANE_WORLD_ID);
         switch (mode) {
         case MAIN:
-            eid_create_roads = d.text_draw("CREATE_ROADS",  0, 0, PANE_CTRL_ID, true);  // r,c,pid,event
-            eid_edit_pixels  = d.text_draw("EDIT_PIXELS",   1, 0, PANE_CTRL_ID, true);  // r,c,pid,event
+            eid_create_roads = d.text_draw("CREATE_ROADS",  0, 0, PANE_CTRL_ID, true, 'C');
+            eid_edit_pixels  = d.text_draw("EDIT_PIXELS",   1, 0, PANE_CTRL_ID, true, 'E');
             break;
         case CREATE_ROADS:
             eid_1        = d.text_draw("1",             0, 0, PANE_CTRL_ID, true, '1');
@@ -263,13 +263,13 @@ int main(int argc, char **argv)
             eid_9        = d.text_draw("9",             0,16, PANE_CTRL_ID, true, '9');      
             eid_rol      = d.text_draw("ROL",           3, 0, PANE_CTRL_ID, true, display::KEY_LEFT);
             eid_ror      = d.text_draw("ROR",           3, 8, PANE_CTRL_ID, true, display::KEY_RIGHT);
-            eid_run      = d.text_draw("RUN",           5, 0, PANE_CTRL_ID, true, 'r');      
-            eid_stop     = d.text_draw("STOP",          5, 8, PANE_CTRL_ID, true, 's');      
-            eid_back     = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
+            eid_run      = d.text_draw("RUN",           5, 0, PANE_CTRL_ID, true, 'R');      
+            eid_stop     = d.text_draw("STOP",          5, 8, PANE_CTRL_ID, true, 'S');      
+            eid_back     = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'B'); 
             eid_cr_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
             break;
         case EDIT_PIXELS:
-            eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'd'); 
+            eid_back  = d.text_draw("BACK",         13,16, PANE_CTRL_ID, true, 'B'); 
             eid_ep_motion = d.event_register(display::ET_MOUSE_RIGHT_MOTION, PANE_WORLD_ID);
             for (int i = 0; i < MAX_EDIT_PIXELS_COLOR_SELECT; i++) {
                 edit_pixels_color_select_t &p = edit_pixels_color_select_tbl[i];

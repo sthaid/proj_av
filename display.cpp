@@ -503,6 +503,18 @@ int display::text_draw(string str, double row, double col, int pid, bool evreg, 
 
         // register for the mouse click event
         eid = event_register(ET_MOUSE_LEFT_CLICK, pid, pos.x, pos.y, pos.w, pos.h, key_alias);
+
+        // underline the first occurance of the key_alias charater
+        for (unsigned int i = 0; i < str.length(); i++) {
+            if (str[i] == key_alias) {
+                int x = pane[pid].x + (col + i) * font[fid].char_width;
+                int y = pane[pid].y + row * font[fid].char_height + (font[fid].char_height * 5 / 6);
+                SDL_SetRenderDrawColor(renderer, colors[LIGHT_BLUE].r, colors[LIGHT_BLUE].g, colors[LIGHT_BLUE].b, colors[LIGHT_BLUE].a);
+                SDL_RenderDrawLine(renderer, x, y, x + font[fid].char_width, y);
+                SDL_RenderDrawLine(renderer, x, y+1, x + font[fid].char_width, y+1);
+                break;
+            }
+        }
     }
 
     // return the registered event id or EID_NONE
@@ -719,6 +731,15 @@ int display::event_register(enum event_type et, int pid, int x, int y, int w, in
     assert(max_eid < MAX_EID);
     assert((key_alias == 0) ||
            (key_alias != 0 && (et == ET_MOUSE_LEFT_CLICK || et == ET_MOUSE_RIGHT_CLICK)));
+
+    if (key_alias != 0) {
+        for (int i = 0; i < max_eid; i++) {
+            if (key_alias == eid_tbl[i].key_alias) {
+                ERROR("duplicate key_alias " << std::hex << key_alias << std::dec << endl);
+                break;
+            }
+        }
+    }
 
     if (x < 0) {
         x = 0;
@@ -1002,7 +1023,12 @@ struct display::event display::event_poll()
             // search for eid with matching key_alias, 
             // if found then return that mouse click event
             for (eid = 0; eid < max_eid; eid++) {
-                if (eid_tbl[eid].key_alias == event_key_code) {
+                if (eid_tbl[eid].key_alias == 0) {
+                    continue;
+                }
+                int v1 = (event_key_code >= 0 && event_key_code <= 255 ? tolower(event_key_code) : event_key_code);
+                int v2 = (eid_tbl[eid].key_alias >= 0 && eid_tbl[eid].key_alias <= 255 ? tolower(eid_tbl[eid].key_alias) : eid_tbl[eid].key_alias);
+                if (v1 == v2) {
                     break;
                 }
             }

@@ -67,13 +67,7 @@ using std::istringstream;
 #define PANE_PGM_CTL_X              820
 #define PANE_PGM_CTL_Y              620
 #define PANE_PGM_CTL_WIDTH          600
-#define PANE_PGM_CTL_HEIGHT         130
-
-#define PANE_MSG_BOX_ID             4
-#define PANE_MSG_BOX_X              820 
-#define PANE_MSG_BOX_Y              750
-#define PANE_MSG_BOX_WIDTH          600
-#define PANE_MSG_BOX_HEIGHT         50 
+#define PANE_PGM_CTL_HEIGHT         180
 
 // world display pane center coordinates and zoom
 double       center_x = world::WORLD_WIDTH / 2;
@@ -85,11 +79,6 @@ double       zoom = 1.0;
 
 // simulation cycle time
 const int CYCLE_TIME_US = 50000;  // 50 ms
-
-// pane message box 
-const int MAX_MESSAGE_TIME_US = 1000000;
-string    message = "";
-long      message_start_time_us;
 
 // cars
 const int     MAX_CAR = 300; 
@@ -110,13 +99,6 @@ condition_variable car_update_controls_cv2;
 mutex              car_update_controls_cv2_mtx;
 thread             car_update_controls_thread_id[MAX_CAR_UPDATE_CONTROLS_THREAD];
 void car_update_controls_thread(int id);
-
-// display message utility
-inline void display_message(string msg)
-{
-    message = msg;
-    message_start_time_us = microsec_timer();
-}
 
 // -----------------  MAIN  ------------------------------------------------------------------------
 
@@ -160,7 +142,10 @@ int main(int argc, char **argv)
     // create the world
     world w(d);
     bool success = w.read(filename);
-    display_message(success ? "READ SUCCESS" : "READ FAILURE");
+    if (!success) {
+        ERROR("read " << filename << endl);
+        return 1;
+    }
 
     // create threads to update car controls
     car_update_controls_idx = MAX_CAR;
@@ -174,6 +159,7 @@ int main(int argc, char **argv)
 
     enum mode { RUN, STOP, STEP };
     enum mode  mode = STOP;
+    bool       turbo = false;
     bool       done = false;
 
     while (!done) {
@@ -231,8 +217,7 @@ int main(int argc, char **argv)
         d.start(PANE_WORLD_X,         PANE_WORLD_Y,         PANE_WORLD_WIDTH,         PANE_WORLD_HEIGHT,
                 PANE_CAR_VIEW_X,      PANE_CAR_VIEW_Y,      PANE_CAR_VIEW_WIDTH,      PANE_CAR_VIEW_HEIGHT,
                 PANE_CAR_DASHBOARD_X, PANE_CAR_DASHBOARD_Y, PANE_CAR_DASHBOARD_WIDTH, PANE_CAR_DASHBOARD_HEIGHT,
-                PANE_PGM_CTL_X,       PANE_PGM_CTL_Y,       PANE_PGM_CTL_WIDTH,       PANE_PGM_CTL_HEIGHT,
-                PANE_MSG_BOX_X,       PANE_MSG_BOX_Y,       PANE_MSG_BOX_WIDTH,       PANE_MSG_BOX_HEIGHT);
+                PANE_PGM_CTL_X,       PANE_PGM_CTL_Y,       PANE_PGM_CTL_WIDTH,       PANE_PGM_CTL_HEIGHT);
 
         // draw world 
         w.draw(PANE_WORLD_ID,center_x,center_y,zoom);
@@ -263,27 +248,29 @@ int main(int argc, char **argv)
             d.draw_pointer(pixel_x*PANE_WORLD_WIDTH, pixel_y*PANE_WORLD_HEIGHT, ptr_size, PANE_WORLD_ID);
         }
 
-        // draw the message box
-        if (microsec_timer() - message_start_time_us < MAX_MESSAGE_TIME_US) {
-            d.text_draw(message, 0, 0, PANE_MSG_BOX_ID);
-        }
-
         // draw and register events
+        //   0123456789 123456789 1234
+        //   RUN  STOP   LAUNCH  STEP
+        //   DEL  TURBO  OFF
         int eid_quit_win  = d.event_register(display::ET_QUIT);
         int eid_pan       = d.event_register(display::ET_MOUSE_LEFT_MOTION, 0);
         int eid_zoom      = d.event_register(display::ET_MOUSE_WHEEL, 0);
         int eid_run       = d.text_draw("RUN",    0, 0,  PANE_PGM_CTL_ID, true, 'r');
         int eid_stop      = d.text_draw("STOP",   0, 5,  PANE_PGM_CTL_ID, true, 's');
-        int eid_launch    = d.text_draw("LAUNCH", 0, 11, PANE_PGM_CTL_ID, true, 'l');      
-        int eid_delete    = d.text_draw("DEL",    0, 19, PANE_PGM_CTL_ID, true, 'd');      
-        int eid_step      = d.text_draw("STEP",   1, 19, PANE_PGM_CTL_ID, true, 'd');      
+        int eid_launch    = d.text_draw("LAUNCH", 0, 12, PANE_PGM_CTL_ID, true, 'l');      
+        int eid_step      = d.text_draw("STEP",   0, 20, PANE_PGM_CTL_ID, true, 'd');      
+        int eid_delete    = d.text_draw("DEL",    1, 0,  PANE_PGM_CTL_ID, true, 'd');      
+        int eid_turbo     = d.text_draw("TURBO",  1, 5,  PANE_PGM_CTL_ID, true, 'd');      
+        int eid_turbo_off = d.text_draw("OFF",    1, 12, PANE_PGM_CTL_ID, true, 'd');      
         int eid_wp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_WORLD_ID);
         int eid_vp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_VIEW_ID);
         int eid_dp_click = d.event_register(display::ET_MOUSE_RIGHT_CLICK, PANE_CAR_DASHBOARD_ID);
 
         // display mode
-        d.text_draw(mode == RUN ? "RUNNING" : mode == STEP ? "STEPPING" : "STOPPED", 
-                    1, 0, PANE_PGM_CTL_ID);
+        d.text_draw((mode == RUN  ? (!turbo ? "RUNNING" : "RUNNING  TURBO") :
+                     mode == STEP ? "STEPPING" 
+                                  : "STOPPED"),
+                    2, 0, PANE_PGM_CTL_ID);
 
         // display number cars: active, failed, and pending
         int failed_count = 0;
@@ -300,7 +287,7 @@ int main(int argc, char **argv)
         }
         ostringstream s;
         s << "ACTV " << active_count << " FAIL " << failed_count << " PEND " << launch_pending;
-        d.text_draw(s.str(), 2, 0, PANE_PGM_CTL_ID);
+        d.text_draw(s.str(), 3, 0, PANE_PGM_CTL_ID);
 
         // finish, updates the display
         d.finish();
@@ -348,13 +335,13 @@ int main(int argc, char **argv)
                 d.event_play_sound();
                 break;
             }
-            if (event.eid == eid_step) {
-                mode = STEP;
+            if (event.eid == eid_launch) {
+                launch_pending++;
                 d.event_play_sound();
                 break;
             }
-            if (event.eid == eid_launch) {
-                launch_pending++;
+            if (event.eid == eid_step) {
+                mode = STEP;
                 d.event_play_sound();
                 break;
             }
@@ -365,6 +352,16 @@ int main(int argc, char **argv)
                     car[dashboard_and_view_idx] = NULL;
                     dashboard_and_view_idx = get_next_dashboard_and_view_idx(id);
                 }
+                d.event_play_sound();
+                break;
+            }
+            if (event.eid == eid_turbo) {
+                turbo = true;
+                d.event_play_sound();
+                break;
+            }
+            if (event.eid == eid_turbo_off) {
+                turbo = false;
                 d.event_play_sound();
                 break;
             }
@@ -403,19 +400,23 @@ int main(int argc, char **argv)
         // DELAY TO COMPLETE THE TARGET CYCLE TIME
         //
 
-        // delay to complete CYCLE_TIME_US
+        // if not in turbo then 
+        //   delay to complete CYCLE_TIME_US, except
+        // endif
         long end_time_us = microsec_timer();
-        long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
-        microsec_sleep(delay_us);
-
-#if 1
-        // oncer every 10 secs, debug print this cycle's processing tie
-        static int count;
-        if (++count == 10000000 / CYCLE_TIME_US) {
-            count = 0;
-            INFO("PROCESSING TIME = " << end_time_us-start_time_us << " us" << endl);
+        if (!turbo) {
+            long delay_us = CYCLE_TIME_US - (end_time_us - start_time_us);
+            microsec_sleep(delay_us);
         }
-#endif
+
+        // if processng time exceeds cycle time then print warning
+        static long time_of_last_processing_time_warning;
+        if (end_time_us - start_time_us > CYCLE_TIME_US &&
+            microsec_timer() - time_of_last_processing_time_warning > 10000000) 
+        {
+            WARNING("processing time " <<  end_time_us-start_time_us << " exceeds cycle time " << CYCLE_TIME_US << endl);
+            time_of_last_processing_time_warning = microsec_timer();
+        }
     }
 
     //
@@ -435,22 +436,17 @@ int main(int argc, char **argv)
 
 bool launch_new_car(display &d, world &w)
 {
-    //XXX const int xo = 2055;
-    //const int yo = 2048;
-    //const int dir = 0;
-    const int xo = 450;
-    const int yo = 2620;
-    const int dir = 335;
+    const int xo = 2055;
+    const int yo = 2048;
+    const int dir = 0;
     const int speed = 0;
 
-#if 0 // XXX
     // check for clear to launch
     for (int y = yo; y >= yo-12; y--) {
         if (w.get_world_pixel(xo,y) != display::BLACK) {
             return false;
         }
     }
-#endif
 
     // find a free slot in car array
     int idx;

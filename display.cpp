@@ -1171,7 +1171,7 @@ void display::print_screen(void)
     // creeate the file_name using localtime
     t = time(NULL);
     localtime_r(&t, &tm);
-    sprintf(file_name, "display_%2.2d%2.2d%2.2d_%2.2d%2.2d%2.2d.png",
+    sprintf(file_name, "screenshot_%2.2d%2.2d%2.2d_%2.2d%2.2d%2.2d.png",
             tm.tm_year - 100, tm.tm_mon + 1, tm.tm_mday,
             tm.tm_hour, tm.tm_min, tm.tm_sec);
 

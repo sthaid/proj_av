@@ -123,13 +123,13 @@ void autonomous_car::draw_dashboard(int pid)
     d.text_draw(state_string(state), base_row+0, 1, pid, false, 0, 1);
 
     // autonomous dash line 1: continuing from stop possible directions
-    if (state == STATE_CONTINUING_FROM_STOP) {
+    if (state == STATE_CONTINUING_FROM_STOP_LINE) {
         d.text_draw(continuing_from_stop_left_is_possible ? "L" : "-",
-                    base_row+0, 25, pid, false, 0, 1);
+                    base_row+0, 28, pid, false, 0, 1);
         d.text_draw(continuing_from_stop_straight_is_possible ? "S" : "-",
-                    base_row+0, 26, pid, false, 0, 1);
+                    base_row+0, 29, pid, false, 0, 1);
         d.text_draw(continuing_from_stop_right_is_possible ? "R" : "-",
-                    base_row+0, 27, pid, false, 0, 1);
+                    base_row+0, 30, pid, false, 0, 1);
     }
     
     // autonomous dash line 2: distance road is clear
@@ -203,7 +203,7 @@ void autonomous_car::update_controls(double microsecs)
         break;
     case STATE_STOPPED_AT_STOP_LINE:
         if (time_in_this_state_us > 1000000) {
-            state_change(STATE_CONTINUING_FROM_STOP);
+            state_change(STATE_CONTINUING_FROM_STOP_LINE);
             // Should not usually have fullgap.valid when stopped at stop line, because scan road
             // should have seen the stop line and stopped scanning. However, if the stop line is not
             // pronounced, then scan road can sometimes not see it and init a fullgap following the
@@ -227,8 +227,8 @@ void autonomous_car::update_controls(double microsecs)
             state_change(STATE_DRIVING);
         }
         break;
-    case STATE_CONTINUING_FROM_STOP:
-        if (time_in_this_state_us > 5000000) {
+    case STATE_CONTINUING_FROM_STOP_LINE:
+        if (time_in_this_state_us > 4000000) {
             state_change(STATE_DRIVING);
         }
         break;
@@ -398,7 +398,7 @@ void autonomous_car::scan_road(view_t &view)
 
         // if there isn't currently a valid fullgap then
         //    scan ahead for center line(s) that continue straight, left, or right;
-        //    if continuing from a stop then 
+        //    if continuing from a stop and the fullgap is close to the car then
         //       choose either one of the continuation center lines at random
         //    else
         //       choose the straight continuation center line
@@ -418,7 +418,7 @@ void autonomous_car::scan_road(view_t &view)
                                                    y_left, x_left, 
                                                    y_right, x_right);
 
-            if (state == STATE_CONTINUING_FROM_STOP) {
+            if (state == STATE_CONTINUING_FROM_STOP_LINE && y > yo - 25) {
                 continuing_from_stop_left_is_possible = (y_left != NO_VALUE);
                 continuing_from_stop_straight_is_possible = (y_straight != NO_VALUE);
                 continuing_from_stop_right_is_possible = (y_right != NO_VALUE);
@@ -428,7 +428,6 @@ void autonomous_car::scan_road(view_t &view)
                         static std::uniform_int_distribution<int> rand_0_to_2(0,2);
                         int n = rand_0_to_2(generator);
                         assert(n >= 0 && n <= 2);
-                        // XXX if (y_right != NO_VALUE) n=2; 
                         if (n == 0 && y_straight != NO_VALUE) {
                             fullgap_y_end_view = y_straight;
                             fullgap_x_end_view = x_straight;
@@ -540,7 +539,7 @@ enum autonomous_car::obstruction autonomous_car::scan_across_for_obstruction(vie
     for (int x_idx = x; x_idx <= x+10; x_idx++) {
         unsigned char pixel = view[y][x_idx];
         if (pixel != display::YELLOW && pixel != display::BLACK) {
-            if (pixel == display::RED && state == STATE_CONTINUING_FROM_STOP) {
+            if (pixel == display::RED && state == STATE_CONTINUING_FROM_STOP_LINE) {
                 continue;
             }
 
@@ -897,8 +896,8 @@ const string autonomous_car::state_string(enum state s)
         return "STOPPED_AT_END_OF_ROAD";
     case STATE_STOPPED:
         return "STOPPED";
-    case STATE_CONTINUING_FROM_STOP:
-        return "CONTINUING_FROM_STOP";
+    case STATE_CONTINUING_FROM_STOP_LINE:
+        return "CONTINUING_FROM_STOP_LINE";
     default:
         return "INVALID";
     }

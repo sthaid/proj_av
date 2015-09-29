@@ -532,7 +532,7 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
     surface = SDL_CreateRGBSurfaceFrom(pixels, 
                                        w, h, 8, w,   // width, height, depth, pitch
                                        0, 0, 0, 0);  // RGBA masks, not used
-    INFO("surface " << surface << endl);
+    DEBUG("surface " << surface << endl);
 
     // set surface palette
     SDL_Palette * palette = SDL_AllocPalette(256);

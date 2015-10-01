@@ -25,7 +25,7 @@ When proceeding from a stop line the autonomous vehicle does not check to the le
 
 # BUILD
 
-I build on Fedora 20.
+Tested on Fedora 20.
 
 In addition to Development Tools, the following packages must be installed:
 - SDL2-devel

@@ -13,7 +13,7 @@ CPPFLAGS = -std=gnu++11 -Wall -g -O2 $(shell sdl2-config --cflags)
 all: $(TARGETS)
 
 av: $(AV_OBJS) 
-	$(CC) -lSDL2 -lSDL2_ttf -lSDL2_mixer -lpng -o $@ $(AV_OBJS)
+	$(CC) -lSDL2 -lSDL2_ttf -lSDL2_mixer -lpng -lpthread -o $@ $(AV_OBJS)
 
 edw: $(EDW_OBJS) 
 	$(CC) -lSDL2 -lSDL2_ttf -lSDL2_mixer -lpng -o $@ $(EDW_OBJS)

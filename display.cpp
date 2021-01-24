@@ -566,9 +566,12 @@ struct display::texture * display::texture_create(unsigned char * pixels, int w,
 
     // assert that the texture has the expected pixel format
     unsigned int fmt;
-    SDL_QueryTexture(texture, &fmt, NULL, NULL, NULL);                               
-    //assert(fmt == SDL_PIXELFORMAT_ARGB8888);
-    assert(fmt == SDL_PIXELFORMAT_RGB888);
+    SDL_QueryTexture(texture, &fmt, NULL, NULL, NULL); 
+
+    // XXX this may be hardware dependant, it works on my laptop
+    //     but not desktop
+    assert(fmt == SDL_PIXELFORMAT_ARGB8888);   // laptop
+    //assert(fmt == SDL_PIXELFORMAT_RGB888);   // desktop
 
     // return the texture
     return reinterpret_cast<struct texture *>(texture);
